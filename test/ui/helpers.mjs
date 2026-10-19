@@ -2,6 +2,7 @@
 // screenshots under test/ui/shots/, and small API helpers.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
@@ -9,21 +10,38 @@ import { chromium } from 'playwright-core';
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const SHOTS = path.join(ROOT, 'test', 'ui', 'shots');
 export const VIEWPORTS = { desktop: { width: 1440, height: 900 }, phone: { width: 390, height: 844 } };
-const PORT = Number(process.env.HAKAWATI_TEST_PORT ?? 4865);
-export let BASE = process.env.HAKAWATI_URL ?? `http://127.0.0.1:${PORT}`;
+export let BASE = process.env.HAKAWATI_URL ?? '';
+const freePort = () => new Promise((resolve, reject) => {
+  const s = net.createServer().on('error', reject).listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); });
+});
 
 let server = null;
-/** Use the Studio at HAKAWATI_URL, or start one on HAKAWATI_TEST_PORT (default 4865). */
+/** Use the Studio at HAKAWATI_URL; otherwise start this checkout's own on HAKAWATI_TEST_PORT or a free port.
+ *  Never reuse whatever happens to answer on a port: it may be another checkout's Studio. */
 export async function startServer() {
-  if (await up()) return;
-  server = spawn(process.execPath, ['server.mjs'], { cwd: ROOT, env: { ...process.env, HAKAWATI_PORT: String(PORT), HAKAWATI_NO_OPEN: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  if (process.env.HAKAWATI_URL) { if (!(await up())) throw new Error(`no Studio answers at ${BASE}`); return; }
+  const port = Number(process.env.HAKAWATI_TEST_PORT) || await freePort();
+  BASE = `http://127.0.0.1:${port}`;
+  if (await up()) throw new Error(`port ${port} is already in use (another Studio?): set HAKAWATI_TEST_PORT to a free port or HAKAWATI_URL to reuse it`);
+  server = spawn(process.execPath, ['server.mjs'], { cwd: ROOT, env: { ...process.env, HAKAWATI_PORT: String(port), HAKAWATI_NO_OPEN: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '';
-  server.stdout.on('data', d => { out += d; });
-  server.stderr.on('data', d => { out += d; });
+  server.stdout.on('data', d => { out = (out + d).slice(-20000); });
+  server.stderr.on('data', d => { out = (out + d).slice(-20000); });
+  server.on('exit', (code, sig) => { if (server) console.error(`# the Studio server exited (${code ?? sig}):\n${out.slice(-4000)}`); });
   for (let i = 0; i < 100; i++) { if (await up()) return; await sleep(100); }
   throw new Error(`the Studio did not start:\n${out}`);
 }
-export async function stopServer() { server?.kill(); server = null; }
+/** Stop the server this run started, and wait until it is gone (a hung test run is worse than a failed one). */
+export async function stopServer() {
+  const s = server; server = null;
+  if (!s || s.exitCode !== null || s.signalCode !== null) return;
+  const gone = new Promise(r => s.once('exit', r));
+  s.kill('SIGTERM');
+  if (await Promise.race([gone.then(() => true), sleep(5000).then(() => false)])) return;
+  console.error('# the Studio server ignored SIGTERM; killing it');
+  s.kill('SIGKILL');
+  await gone;
+}
 async function up() { try { return (await fetch(`${BASE}/api/meta`)).ok; } catch { return false; } }
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
 

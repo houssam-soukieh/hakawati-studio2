@@ -13,7 +13,7 @@ import { STYLES, CAMERAS, TRANSITIONS, SHOT_TYPES, ASPECTS } from './lib/styles.
 import { listProjects, createProject, loadProject, saveProject, fileOf, pruneAssets, allShots } from './lib/project.mjs';
 import { shotStatus, STEPS, FILM } from './lib/pipeline.mjs';
 import { buildTimeline } from './lib/timeline.mjs';
-import { buildBundle } from './lib/render.mjs';
+import { buildBundle, closeBrowser } from './lib/render.mjs';
 import { expandCast, librarySymbols } from './lib/svg.mjs';
 import { enqueue, subscribe, listJobs, getJob, stopJob } from './lib/jobs.mjs';
 import { loadSettings } from './lib/settings.mjs';
@@ -203,6 +203,13 @@ const server = http.createServer(async (req, res) => {
     console.error(e);
     if (!res.headersSent) send(res, 500, { error: e.message });
   }
+});
+
+// Stop on SIGTERM. While a render browser is open, Playwright's own SIGTERM handler replaces the default one and only
+// closes the browser (a stopped job leaves it open), so `kill <pid>` would otherwise never stop the Studio.
+process.on('SIGTERM', () => {
+  setTimeout(() => process.exit(0), 3000).unref();
+  closeBrowser().finally(() => process.exit(0));
 });
 
 server.listen(PORT, '127.0.0.1', () => {

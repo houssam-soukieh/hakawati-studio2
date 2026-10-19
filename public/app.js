@@ -645,8 +645,11 @@ function doctorHTML(sp) {
 
 /** The beings' private lines in a shot (sh.whispers) and the "typing…" bubble (sh.overlay). Timings come from the timeline. */
 const castColor = id => S.sp.cast?.find(c => c.id === id)?.color;
+/** The timeline's timing for each whisper row; a row whose text is still empty is not in the timeline yet. */
+const whisperTimes = sh => { const tl = row(sh.id)?.whispers ?? []; let k = 0; return (sh.whispers ?? []).map(w => (String(w.text ?? '').trim() ? tl[k++] : undefined)); };
+const whisperTime = tw => (tw ? `${fmt(tw.start)}–${fmt(tw.end)} s` : '');
 function whispersHTML(sh) {
-  const list = sh.whispers ?? [], tl = row(sh.id)?.whispers ?? [];
+  const list = sh.whispers ?? [], tl = whisperTimes(sh);
   const cast = [...(S.sp.cast ?? []).filter(c => c.kind === 'being'), ...(S.sp.cast ?? []).filter(c => c.kind !== 'being')];
   const btn = (act, title, ch, off) => `<button type="button" class="icon-btn" data-wact="${act}" title="${esc(title)}" aria-label="${esc(title)}" ${off ? 'disabled' : ''}>${ch}</button>`;
   return `<details class="whispers" ${list.length ? 'open' : ''}><summary>${t('whispers', list.length)}</summary><div class="wh-list">
@@ -654,7 +657,7 @@ function whispersHTML(sh) {
       <div class="wh-top">
         <span class="dot" style="background:${esc(tl[i]?.color ?? castColor(w.speaker) ?? 'var(--muted)')}"></span>
         <select data-wk="speaker" title="${esc(t('speaker'))}" aria-label="${esc(t('speaker'))}"><option value="">${esc(t('noSpeaker'))}</option>${cast.map(c => `<option value="${esc(c.id)}" ${c.id === w.speaker ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
-        <span class="wh-time">${tl[i] ? `${fmt(tl[i].start)}–${fmt(tl[i].end)} s` : ''}</span>
+        <span class="wh-time">${whisperTime(tl[i])}</span>
         <label class="wh-plain" title="${esc(t('plainTitle'))}"><input type="checkbox" data-wk="plain" ${w.plain ? 'checked' : ''}>${t('plain')}</label>
         <span class="grow"></span>${btn('up', t('moveUp'), '▲', i === 0)}${btn('down', t('moveDown'), '▼', i === list.length - 1)}${btn('del', t('remove'), '✕')}
       </div>
@@ -829,7 +832,8 @@ async function flushSave() {
     const view = await api(`projects/${pid()}`, { method: 'PUT', body: { screenplay: S.sp } });
     S.saved = seq;
     S.p = view;
-    if (S.edit === seq) S.sp = structuredClone(view.screenplay);
+    // S.sp stays the editor's copy: the server's is normalised (it drops a whisper row whose text is still empty),
+    // and the cards on screen index into S.sp, so swapping it here would orphan them.
     refreshLive();
     setSaveState(S.edit === seq ? t('savedChip') : '…');
   })();
@@ -848,7 +852,8 @@ function refreshLive() {
     const fr = $('.frame', card);
     if (s.thumb && fr.style.backgroundImage !== `url("${s.thumb}")`) { fr.style.backgroundImage = `url('${s.thumb}')`; $('.ph', fr)?.remove(); if (!$('.play', fr)) fr.insertAdjacentHTML('afterbegin', '<div class="play" aria-hidden="true">▶</div>'); }
     $('.badges', card).innerHTML = frameBadgesHTML(id, sh.kind);
-    $$('.wh-row', card).forEach((wr, i) => { const tw = r?.whispers?.[i]; $('.wh-time', wr).textContent = tw ? `${fmt(tw.start)}–${fmt(tw.end)} s` : ''; });
+    const times = whisperTimes(sh);
+    $$('.wh-row', card).forEach((wr, i) => { $('.wh-time', wr).textContent = whisperTime(times[i]); if (times[i]?.color) $('.dot', wr).style.background = times[i].color; });
     for (const [cls, v] of [['.prompt-line', s.prompt], ['.critique-line', s.critique]]) {
       const el = $(cls, card);
       if (el) { el.hidden = !v; $('span', el).textContent = v ?? ''; }
@@ -1180,7 +1185,7 @@ async function openSettings(section) {
     vis.hidden = !r || typeof r.vision !== 'boolean';
     if (!r) return;
     out.textContent = `✓ ${r.model}: “${r.reply}”${r.seconds ? ` (${fmt(r.seconds)} s)` : ''}${r.models?.length ? ` — ${t('modelsAvail', r.models.length)}` : ''}`;
-    if (typeof r.vision === 'boolean') { vis.textContent = t('vision', r.vision); vis.className = `small ${r.vision ? 'ok-t' : 'warn-t'}`; }
+    if (typeof r.vision === 'boolean') { vis.textContent = t('vision', r.vision) + (!r.vision && r.visionError ? ` (${r.visionError})` : ''); vis.className = `small ${r.vision ? 'ok-t' : 'warn-t'}`; }
     $('#sModels', d).innerHTML = (r.models ?? []).map(m => `<option value="${esc(m)}">`).join('');
   };
   $('#iTest', d).onclick = async () => {
@@ -1284,15 +1289,18 @@ function connectEvents() {
 }
 
 /** A job touched the open project: take the server's view; keep unsaved edits in the editor. */
+/** What the storyboard's cards are built from; when a job changes it, the cards are redrawn instead of patched. */
+const boardShape = sp => JSON.stringify(sp && [sp.cast?.map(c => c.id), sp.scenes.map(sc => [sc.id, sc.shots.map(sh => [sh.id, sh.whispers?.length ?? 0])])]);
+
 async function reloadCurrent() {
   await flushSave().catch(() => {});
   const view = await api(`projects/${pid()}`);
-  const hadSp = !!S.sp;
+  const hadSp = !!S.sp, shape = boardShape(S.sp);
   S.p = view;
   if (S.edit === S.saved) S.sp = view.screenplay ? structuredClone(view.screenplay) : null;
   if (!hadSp && S.sp) { location.hash = `#/p/${S.p.id}/board`; return; }
   if ($('#modal').open) return; // don't yank the animatic away mid-play
-  if (S.tab === 'board' && hadSp && S.sp) { refreshLive(); return; }
+  if (S.tab === 'board' && hadSp && S.sp) { if (boardShape(S.sp) === shape) refreshLive(); else renderKeepScroll(); return; }
   if (document.activeElement?.closest?.('#tab') && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return; // typing
   if (S.tab === 'story' || (S.tab === 'room' && S.ani)) return; // the story form only changes on "Save"
   renderKeepScroll();
