@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hakawati Player</title>
+<!--
+  One player for everything: the studio previews a shot with it (mode=play, real time), and the renderer drives it
+  frame by frame (mode=capture: every animation paused and seeked to t), so what you preview is what you get.
+  Camera moves, subtitles, film grain and the title/end cards are drawn here — never by the model.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@700&family=Cairo:wght@600;800&family=Playfair+Display:wght@700&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: #000; --u: min(1vw, 1vh); }
+  #cam { position: absolute; inset: 0; transform-origin: 50% 50%; }
+  #cam > svg, #cam > img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #cam > img { object-fit: cover; }
+  #card { position: absolute; inset: 0; display: none; }
+  #grain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; mix-blend-mode: overlay; opacity: .07; }
+  #vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 62%, rgba(0,0,0,.38) 100%); }
+  #cap { position: absolute; left: 7%; right: 7%; bottom: 7%; text-align: center; pointer-events: none; }
+  #cap.tall { bottom: 15%; left: 6%; right: 6%; }
+  #cap span {
+    display: inline; box-decoration-break: clone; -webkit-box-decoration-break: clone;
+    font-family: Cairo, 'Segoe UI', Tahoma, sans-serif; font-weight: 800; color: #fff;
+    font-size: calc(var(--u) * 4.4); line-height: 1.75; padding: .12em .55em; border-radius: .35em;
+    background: rgba(8, 10, 18, .62); text-shadow: 0 2px 6px rgba(0,0,0,.6);
+  }
+  #cap.tall span { font-size: calc(var(--u) * 6.2); }
+  #err { position: absolute; inset: 0; display: none; place-items: center; color: #fca5a5; font: 600 18px/1.6 'Segoe UI', sans-serif; padding: 40px; text-align: center; background: #1b0d10; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="cam"></div>
+  <div id="card"></div>
+  <div id="vig"></div>
+  <svg id="grain" xmlns="http://www.w3.org/2000/svg"><filter id="gf"><feTurbulence id="gt" type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="1" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#gf)"/></svg>
+  <div id="cap"><span></span></div>
+  <div id="err"></div>
+</div>
+<script>
+(() => {
+  const qs = new URLSearchParams(location.search);
+  const mode = qs.get('mode') || 'play';           // play | capture | still
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const ease = x => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const easeOut = x => 1 - Math.pow(1 - x, 3);
+  let B = null, svgEl = null, cardFn = null;
+  const problems = [];
+  window.__problems = problems;
+
+  // Camera moves (scale, x%, y%) from → to, eased across the shot.
+  const CAM = {
+    static: [[1.0, 0, 0], [1.0, 0, 0]],
+    'push-in': [[1.0, 0, 0], [1.13, 0, -1]],
+    'pull-out': [[1.14, 0, -1], [1.0, 0, 0]],
+    'pan-left': [[1.1, 4, 0], [1.1, -4, 0]],
+    'pan-right': [[1.1, -4, 0], [1.1, 4, 0]],
+    'tilt-up': [[1.1, 0, -4], [1.1, 0, 4]],
+    'tilt-down': [[1.1, 0, 4], [1.1, 0, -4]],
+    drift: [[1.04, -1.2, .6], [1.09, 1.2, -.6]],
+  };
+
+  function mountSvg(text) {
+    const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+    const pe = doc.querySelector('parsererror');
+    if (pe) {
+      problems.push('the SVG is not well-formed XML: ' + pe.textContent.replace(/\s+/g, ' ').slice(0, 220));
+      $('cam').innerHTML = text;               // the HTML parser is forgiving — still show something
+      svgEl = $('cam').querySelector('svg');
+    } else {
+      svgEl = document.importNode(doc.documentElement, true);
+      $('cam').appendChild(svgEl);
+    }
+    if (svgEl) { svgEl.setAttribute('preserveAspectRatio', 'xMidYMid slice'); svgEl.removeAttribute('width'); svgEl.removeAttribute('height'); }
+  }
+
+  // ---------------------------------------------------------------- title & end cards
+  function star(n, r1, r2, cx, cy) {
+    let d = '';
+    for (let i = 0; i < n * 2; i++) { const r = i % 2 ? r2 : r1, a = Math.PI * i / n - Math.PI / 2; d += (i ? 'L' : 'M') + (cx + r * Math.cos(a)).toFixed(1) + ' ' + (cy + r * Math.sin(a)).toFixed(1); }
+    return d + 'Z';
+  }
+  function buildCard() {
+    const p = B.palette, ar = B.language === 'ar';
+    const titleFont = ar ? "'Aref Ruqaa', Amiri, 'Traditional Arabic', serif" : "'Playfair Display', Georgia, serif";
+    const isEnd = B.kind === 'end';
+    const card = $('card');
+    card.style.display = 'block';
+    card.innerHTML = `
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%, ${p.sky1} 0%, ${p.bg} 55%, ${p.shadow} 100%)"></div>
+      <svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%">
+        <defs><filter id="cgl"><feGaussianBlur stdDeviation="6"/></filter></defs>
+        <g id="motes">${Array.from({ length: 40 }, (_, i) => `<circle data-i="${i}" r="${(1 + (i * 7 % 5) * .6).toFixed(1)}" fill="${p.accent}" opacity=".7" filter="url(#cgl)"/>`).join('')}</g>
+      </svg>
+      <svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%">
+        <g id="orn" opacity=".0" style="transform-origin:500px 500px">
+          <path d="${star(8, 330, 250, 500, 500)}" fill="none" stroke="${p.accent}" stroke-width="2" opacity=".35"/>
+          <path d="${star(8, 250, 190, 500, 500)}" fill="none" stroke="${p.accent}" stroke-width="1.5" opacity=".5"/>
+          <path d="${star(16, 380, 350, 500, 500)}" fill="none" stroke="${p.accent2}" stroke-width="1" opacity=".3"/>
+          <circle cx="500" cy="500" r="410" fill="none" stroke="${p.accent}" stroke-width="1" stroke-dasharray="2 10" opacity=".45"/>
+        </g>
+      </svg>
+      <div id="ctext" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 8%;direction:${ar ? 'rtl' : 'ltr'}">
+        <div id="ctitle" style="font-family:${titleFont};font-weight:700;color:${p.ink};font-size:calc(var(--u)*${isEnd ? 12 : (B.title.length > 22 ? 9 : 12)});line-height:1.25;text-shadow:0 0 calc(var(--u)*3) ${p.accent}66, 0 4px 18px rgba(0,0,0,.6)">${esc(isEnd ? B.endText : B.title)}</div>
+        <div id="cline" style="margin-top:calc(var(--u)*2.4);height:2px;width:0;background:linear-gradient(90deg,transparent,${p.accent},transparent)"></div>
+        <div id="csub" style="margin-top:calc(var(--u)*2.2);font-family:Cairo,'Segoe UI',sans-serif;font-weight:600;color:${p.ink};opacity:.85;font-size:calc(var(--u)*3.3);max-width:80%;line-height:1.6">${esc(isEnd ? B.title : B.logline)}</div>
+      </div>`;
+    const orn = card.querySelector('#orn'), motes = [...card.querySelectorAll('#motes circle')];
+    const ttl = card.querySelector('#ctitle'), line = card.querySelector('#cline'), sub = card.querySelector('#csub');
+    return t => {
+      const D = B.D, k = clamp(t / D, 0, 1);
+      orn.setAttribute('opacity', (clamp(t / 1.2, 0, 1) * .9).toFixed(3));
+      orn.style.transform = `rotate(${(t * 6).toFixed(2)}deg) scale(${(0.92 + 0.08 * easeOut(clamp(t / 2, 0, 1))).toFixed(4)})`;
+      motes.forEach((m, i) => {
+        const sp = 18 + (i * 13 % 23), x = (i * 97 % 1000), y = 1000 - ((i * 211 % 1000) + t * sp * 8) % 1100;
+        m.setAttribute('cx', (x + Math.sin(t * .7 + i) * 14).toFixed(1)); m.setAttribute('cy', y.toFixed(1));
+        m.setAttribute('opacity', (0.25 + 0.5 * Math.abs(Math.sin(t * 1.3 + i))).toFixed(2));
+      });
+      const a = easeOut(clamp((t - 0.25) / 1.1, 0, 1));
+      ttl.style.opacity = a; ttl.style.transform = `translateY(${((1 - a) * 3).toFixed(2)}vh) scale(${(0.96 + 0.04 * a).toFixed(4)})`;
+      ttl.style.letterSpacing = B.language === 'ar' ? '0' : `${((1 - a) * 0.25).toFixed(3)}em`;
+      line.style.width = `${(easeOut(clamp((t - 0.9) / 1.0, 0, 1)) * 34).toFixed(2)}%`;
+      const b = easeOut(clamp((t - 1.3) / 0.9, 0, 1));
+      sub.style.opacity = (b * 0.85).toFixed(3); sub.style.transform = `translateY(${((1 - b) * 2).toFixed(2)}vh)`;
+      const out = B.kind === 'end' ? 1 - clamp((t - (D - 0.9)) / 0.9, 0, 1) : 1; // the end card fades to black
+      card.style.opacity = out.toFixed(3);
+    };
+  }
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+  // ---------------------------------------------------------------- seek: the whole frame is a function of t
+  let lastCap = null;
+  function seek(t) {
+    for (const a of document.getAnimations()) { if (a.playState !== 'paused') a.pause(); a.currentTime = t * 1000; }
+    if (svgEl && svgEl.setCurrentTime) { svgEl.pauseAnimations(); svgEl.setCurrentTime(t); }
+    if (cardFn) cardFn(t);
+    // camera
+    const [f, to] = CAM[B.camera] || CAM.static;
+    const k = ease(clamp(t / B.D, 0, 1));
+    const s = f[0] + (to[0] - f[0]) * k, x = f[1] + (to[1] - f[1]) * k, y = f[2] + (to[2] - f[2]) * k;
+    $('cam').style.transform = `translate(${x.toFixed(3)}%, ${y.toFixed(3)}%) scale(${s.toFixed(4)})`;
+    // subtitles: fade in/out over 0.18 s
+    let cap = null, op = 0;
+    if (B.captionsOn) for (const c of B.captions) if (t >= c.start - 0.05 && t <= c.end + 0.25) { cap = c; op = Math.min(clamp((t - c.start + 0.05) / 0.18, 0, 1), clamp((c.end + 0.25 - t) / 0.18, 0, 1)); break; }
+    const span = $('cap').firstElementChild;
+    if (cap !== lastCap) { span.textContent = cap ? cap.text : ''; lastCap = cap; }
+    $('cap').style.opacity = op.toFixed(3);
+    $('cap').style.visibility = cap ? 'visible' : 'hidden';
+    // living grain
+    if (B.grain) $('gt').setAttribute('seed', String(Math.floor(t * 12) % 997 + 1));
+  }
+
+  async function init() {
+    B = window.__BUNDLE;
+    if (!B) {
+      const r = await fetch(`/api/projects/${encodeURIComponent(qs.get('p'))}/bundle/${encodeURIComponent(qs.get('s'))}`);
+      if (!r.ok) throw new Error(await r.text());
+      B = await r.json();
+    }
+    if (qs.get('captions') === '0') B.captionsOn = false;
+    document.documentElement.dir = B.language === 'ar' ? 'rtl' : 'ltr';
+    $('cap').classList.toggle('tall', B.aspect === '9:16');
+    $('grain').style.display = B.grain ? 'block' : 'none';
+    $('vig').style.display = B.kind === 'shot' ? 'block' : 'none';
+    if (B.kind === 'shot') {
+      // a painted keyframe (ComfyUI) is the base layer; an animated SVG, when there is one, is drawn over it
+      if (B.image) {
+        const img = new Image();
+        img.alt = '';
+        img.src = location.protocol === 'file:' ? B.image.file : B.image.url;
+        $('cam').appendChild(img);
+        try { await img.decode(); } catch { problems.push('the picture could not be loaded: ' + img.src.slice(-80)); }
+      }
+      if (B.svg || !B.image) mountSvg(B.svg || '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 9"><rect width="16" height="9" fill="#111"/></svg>');
+    }
+    else cardFn = buildCard();
+    try { await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 3500))]); } catch { /* offline */ }
+    seek(0);
+    window.__seek = seek;
+    window.__info = () => {
+      const anims = document.getAnimations();
+      const finite = anims.map(a => { const tm = a.effect?.getComputedTiming?.(); return tm && isFinite(tm.endTime) ? { end: tm.endTime / 1000, name: a.animationName || a.id || '' } : null; }).filter(Boolean);
+      const smil = svgEl ? svgEl.querySelectorAll('animate,animateTransform,animateMotion,set').length : 0;
+      return { animations: anims.length, smil, finite, elements: svgEl ? svgEl.querySelectorAll('*').length : 0, problems };
+    };
+    window.__ready = true;
+    if (mode === 'play') play();
+    if (mode === 'wait') addEventListener('message', e => { if (e.data?.type === 'hakawati:play') play(); });
+    if (mode === 'still') seek(qs.has('t') ? Number(qs.get('t')) : B.D * 0.6);
+    parent.postMessage({ type: 'hakawati:ready', D: B.D }, '*');
+  }
+
+  function play() {
+    const t0 = performance.now();
+    const loop = qs.get('loop') === '1';
+    const tick = () => {
+      let t = (performance.now() - t0) / 1000;
+      if (t >= B.D) { if (loop) return play(); parent.postMessage({ type: 'hakawati:ended' }, '*'); seek(B.D - 0.001); return; }
+      seek(t);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  init().catch(e => { $('err').style.display = 'grid'; $('err').textContent = String(e.message || e); window.__ready = true; window.__seek = () => {}; problems.push(String(e.message || e)); });
+})();
+</script>
+</body>
+</html>

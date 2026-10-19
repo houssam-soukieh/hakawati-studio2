@@ -1,0 +1,14 @@
+{
+  "name": "hakawati-studio",
+  "version": "1.0.0",
+  "description": "Hakawati Studio — story to animated-SVG video, written by any AI engine",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "studio": "node server.mjs",
+    "make": "node make.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "^1.49.1"
+  }
+}
