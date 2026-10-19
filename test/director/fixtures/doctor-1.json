@@ -1,0 +1,10 @@
+{
+  "verdict": "A faithful, well-lit draft with one invented beat, one overloaded shot and a flat discovery; fix those and it is ready.",
+  "issues": [
+    { "shot": "s1-3", "area": "montage", "severity": "medium", "problem": "s1-2 → s1-3 are two medium shots of Layla in a row; the discovery of the falling star has no image of its own.", "fix": "Make s1-3 a POV shot (35mm) of the star streaking down behind the far hills; Layla's reaction lives in the narration." },
+    { "shot": "s2-2", "area": "faithfulness", "severity": "high", "problem": "'وتذكّرت تحذيرَ جدّتِها من الذئاب' invents a grandmother and wolves that are not in the story.", "fix": "Cut the clause; narration becomes 'ومشيا طويلاً بين الأشجارِ الصامتة.'" },
+    { "shot": "s2-3", "area": "narration", "severity": "medium", "problem": "29 words in a 4 s shot (7.3 words/s) and 'وإن الليلَ طويلٌ والبردَ شديد' is invented.", "fix": "Split: s2-3 keeps 'حتى وجدا النجمةَ الصغيرةَ تبكي بين الصخور.'; add an over-shoulder shot past Layla onto the star for 'قالت النجمةُ إنها فقدت طريقَها إلى السماء.'; cut the invented line." },
+    { "shot": "s3-2", "area": "ending", "severity": "medium", "problem": "The coda is crammed into the star's flight; the film never returns to the rooftop that opened it.", "fix": "Split: s3-2 the star flies up (motion 2); a new last scene on the rooftop echoes s1-1, Layla looking at the one brighter star." },
+    { "shot": "location:hills", "area": "bible", "severity": "low", "problem": "The hills look names no time of day or light, so shots there may be painted in daylight.", "fix": "Append 'late night, cool silver moonlight from the upper right, long blue shadows'." }
+  ]
+}
