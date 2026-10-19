@@ -1,0 +1,244 @@
+{
+  "title": "نجمة ليلى",
+  "logline": "فتاةٌ تحبّ النجوم تعيد نجمةً تائهةً إلى السماء بنور فانوسها.",
+  "mood": "wonder",
+  "palette": {
+    "bg": "#0B1016",
+    "sky1": "#16303D",
+    "sky2": "#C7853F",
+    "ink": "#F3F1EC",
+    "accent": "#F2B84B",
+    "accent2": "#7FA7C9",
+    "shadow": "#05080C"
+  },
+  "artStyle": "Painterly cinematic night film: deep blue moonlit skies, warm amber lantern light, soft volumetric haze, Levantine mountain village textures.",
+  "cast": [
+    {
+      "id": "layla",
+      "name": "ليلى",
+      "look": "eight-year-old Levantine girl, warm olive skin, round face, long black hair in a single thick braid, large dark-brown eyes, indigo wool dress over a cream shirt, saffron-yellow headscarf, small brass lantern with amber glass",
+      "personality": "dreamy, brave, kind"
+    },
+    {
+      "id": "fox",
+      "name": "الثعلب الصغير",
+      "look": "small red fox cub, russet fur with a cream chest, white-tipped bushy tail, bright amber eyes, one torn left ear, a thin blue thread tied around its neck",
+      "personality": "loyal, curious, quick"
+    },
+    {
+      "id": "star",
+      "name": "النجمة",
+      "look": "a small fallen star, a glowing five-pointed crystal the size of a melon, pale gold-white light, soft blue halo, two tiny teardrop sparks under its centre",
+      "personality": "lost, gentle, shy"
+    }
+  ],
+  "locations": [
+    {
+      "id": "village-roof",
+      "name": "سطح البيت",
+      "look": "flat earthen rooftop of a stone house in a mountain-foot village, clay water jars and a washing line, deep blue night sky crowded with stars, cool moonlight from the upper right, warm amber window glow below"
+    },
+    {
+      "id": "hills",
+      "name": "التلال",
+      "look": "rocky hills beyond the village, silent oak trees, grey boulders, dry grass, a winding goat path, late night, cool silver moonlight from the upper right, long blue shadows"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "s1",
+      "title": "عاشقة النجوم",
+      "location": "village-roof",
+      "shots": [
+        {
+          "id": "s1-1",
+          "narration": "في قريةٍ صغيرةٍ عند سفحِ الجبل، عاشت فتاةٌ اسمُها ليلى، تُحبُّ النجوم.",
+          "visual": "A tiny stone village sleeps at the foot of a dark mountain under a sky crowded with stars; on one flat rooftop at the right third, Layla is a small figure sitting with her lantern.",
+          "action": "0–5s stars twinkle; a thin smoke curl rises from a chimney; the lantern glow flickers.",
+          "cast": [
+            "layla"
+          ],
+          "shotType": "establishing",
+          "camera": "drift",
+          "lens": "24mm wide",
+          "light": "cool moonlight from upper right, warm lantern point",
+          "motion": 1,
+          "transition": "cut",
+          "seconds": 5
+        },
+        {
+          "id": "s1-2",
+          "narration": "كانت كلَّ ليلةٍ تصعدُ إلى سطحِ بيتِها، وتعدُّ النجومَ واحدةً واحدة.",
+          "visual": "Layla sits cross-legged at the left third of the rooftop, face tilted up, one finger pointing at the stars; the lantern rests beside her knee, clay jars behind her.",
+          "action": "0–2s her finger moves from star to star; 3s she smiles; ambient: washing line sways.",
+          "cast": [
+            "layla"
+          ],
+          "shotType": "medium",
+          "camera": "push-in",
+          "lens": "35mm",
+          "light": "warm lantern key from left, cold moonlight rim",
+          "motion": 1,
+          "transition": "cut",
+          "seconds": 4.5
+        },
+        {
+          "id": "s1-3",
+          "narration": "وفي ليلةٍ صافية، رأت نجمةً تسقطُ خلفَ التلالِ البعيدة.",
+          "visual": "Point of view from the rooftop: past the clay jars, a single bright star streaks down the deep blue sky and vanishes behind the black line of the far hills.",
+          "action": "0–3s the star streaks down and disappears; ambient: other stars twinkle, the washing line sways.",
+          "cast": [],
+          "shotType": "pov",
+          "camera": "static",
+          "lens": "35mm",
+          "light": "cool moonlight, one bright falling streak",
+          "motion": 1,
+          "transition": "fade",
+          "seconds": 4
+        }
+      ]
+    },
+    {
+      "id": "s2",
+      "title": "إلى التلال",
+      "location": "hills",
+      "shots": [
+        {
+          "id": "s2-1",
+          "narration": "فحملت ليلى فانوسَها، وانطلقت مع صديقِها الثعلبِ الصغيرِ نحو التلال.",
+          "visual": "Wide view of the moonlit goat path climbing the hills; Layla walks from left to right with the lantern held forward, the fox trotting a step ahead of her.",
+          "action": "0–5s they walk left to right; the lantern swings; ambient: grass bends in the breeze.",
+          "cast": [
+            "layla",
+            "fox"
+          ],
+          "shotType": "wide",
+          "camera": "pan-right",
+          "lens": "24mm wide",
+          "light": "cool silver moonlight from upper right, warm lantern pool",
+          "motion": 2,
+          "transition": "cut",
+          "seconds": 5
+        },
+        {
+          "id": "s2-2",
+          "narration": "ومشيا طويلاً بين الأشجارِ الصامتة.",
+          "visual": "Layla and the fox pass between two dark oak trunks, the girl glancing back over her shoulder; the lantern lights the bark in amber.",
+          "action": "0–4s they walk deeper; 2s she glances back; ambient: leaves tremble.",
+          "cast": [
+            "layla",
+            "fox"
+          ],
+          "shotType": "medium",
+          "camera": "drift",
+          "lens": "35mm",
+          "light": "warm lantern key, deep blue shadows",
+          "motion": 1,
+          "transition": "cut",
+          "seconds": 3.5
+        },
+        {
+          "id": "s2-3",
+          "narration": "حتى وجدا النجمةَ الصغيرةَ تبكي بين الصخور.",
+          "visual": "Between two grey boulders the small star glows on the ground, two teardrop sparks under it; Layla kneels at the left, lantern lowered, the fox's nose close to the light.",
+          "action": "0–4s the star pulses dimly; spark-tears drip; ambient: dust floats in its glow.",
+          "cast": [
+            "layla",
+            "fox",
+            "star"
+          ],
+          "shotType": "close",
+          "camera": "push-in",
+          "lens": "85mm portrait",
+          "light": "pale gold glow from below, warm lantern from left",
+          "motion": 1,
+          "transition": "cut",
+          "seconds": 4
+        },
+        {
+          "id": "s2-4",
+          "narration": "قالت النجمةُ إنها فقدت طريقَها إلى السماء.",
+          "visual": "Over Layla's right shoulder (her saffron headscarf soft in the foreground left) onto the small star glowing between the boulders, its two spark-tears catching the lantern light.",
+          "action": "0–3s the star's glow dims and brightens like a sob; ambient: dust drifts in the light.",
+          "cast": [
+            "layla",
+            "star"
+          ],
+          "shotType": "over-shoulder",
+          "camera": "static",
+          "lens": "50mm",
+          "light": "pale gold glow from below, warm lantern from left",
+          "motion": 1,
+          "transition": "cut",
+          "seconds": 3.5
+        }
+      ]
+    },
+    {
+      "id": "s3",
+      "title": "طريق النور",
+      "location": "hills",
+      "shots": [
+        {
+          "id": "s3-1",
+          "narration": "ففكّرت ليلى قليلاً، ثم رفعت فانوسَها عالياً ليضيءَ الطريق.",
+          "visual": "Layla stands on a boulder at the center, right arm raised high with the lantern, its amber light spilling up into the night; the star hovers at her shoulder, the fox looks up.",
+          "action": "0–2s she lifts the lantern high; 2–4s the light blooms upward; ambient: haze glows.",
+          "cast": [
+            "layla",
+            "fox",
+            "star"
+          ],
+          "shotType": "medium",
+          "camera": "tilt-up",
+          "lens": "35mm",
+          "light": "strong amber lantern key from above, moonlight rim",
+          "motion": 2,
+          "transition": "cut",
+          "seconds": 4.5
+        },
+        {
+          "id": "s3-2",
+          "narration": "فطارت النجمةُ صاعدةً مع نورِ الفانوس، حتى عادت إلى مكانِها بين أخواتِها.",
+          "visual": "Tiny figures of Layla and the fox on the hilltop at the bottom third look up as the bright star climbs the lantern's beam into the crowded sky.",
+          "action": "0–5s the star rises along the beam and settles among the stars; ambient: stars twinkle.",
+          "cast": [
+            "layla",
+            "fox"
+          ],
+          "shotType": "wide",
+          "camera": "tilt-up",
+          "lens": "24mm wide",
+          "light": "moonlight, a warm beam of lantern light rising",
+          "motion": 2,
+          "transition": "fade",
+          "seconds": 5.5
+        }
+      ]
+    },
+    {
+      "id": "s4",
+      "title": "النجمة الأكثر لمعاناً",
+      "location": "village-roof",
+      "shots": [
+        {
+          "id": "s4-1",
+          "narration": "ومنذ تلك الليلة، صار في السماءِ نجمةٌ تلمعُ أكثرَ من غيرِها، كلما نظرت إليها ليلى.",
+          "visual": "The same rooftop as the opening, closer: Layla sits at the left third with the fox curled against her knee, both looking up at one star that shines brighter than all the others.",
+          "action": "0–6s the bright star twinkles; 3s Layla smiles; ambient: lantern flame flickers, the washing line sways.",
+          "cast": [
+            "layla",
+            "fox"
+          ],
+          "shotType": "wide",
+          "camera": "pull-out",
+          "lens": "35mm",
+          "light": "cool moonlight from upper right, warm lantern from left",
+          "motion": 1,
+          "transition": "fade-black",
+          "seconds": 6
+        }
+      ]
+    }
+  ]
+}

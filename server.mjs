@@ -71,7 +71,8 @@ function cleanScreenplay(sp, old) {
       if (!SAFE_ID.test(sh.id ?? '') || seen.has(sh.id)) throw new Error(`bad or duplicate shot id ${sh.id}`);
       seen.add(sh.id);
       sh.kind = ['title', 'end'].includes(sh.id) ? sh.id : 'shot';
-      for (const k of ['narration', 'visual', 'action']) sh[k] = String(sh[k] ?? '');
+      for (const k of ['narration', 'visual', 'action', 'lens', 'light']) sh[k] = String(sh[k] ?? '');
+      sh.motion = Number(sh.motion) === 2 && sh.kind === 'shot' ? 2 : 1; // 2 = image-to-video, 1 = still + camera
       sh.cast = Array.isArray(sh.cast) ? sh.cast.map(String) : [];
       if (!CAMERAS.includes(sh.camera)) sh.camera = 'drift';
       if (!TRANSITIONS.includes(sh.transition)) sh.transition = 'cut';
@@ -80,6 +81,13 @@ function cleanScreenplay(sp, old) {
     }
   }
   sp.scenes = sp.scenes.filter(sc => sc.shots.length);
+  // the visual bible: looks are pasted verbatim into picture prompts, so they must stay strings
+  for (const k of ['cast', 'locations']) {
+    if (!(k in sp)) continue;
+    if (!Array.isArray(sp[k])) { delete sp[k]; continue; }
+    sp[k] = sp[k].filter(x => x && typeof x === 'object' && SAFE_ID.test(x.id ?? ''));
+    for (const x of sp[k]) for (const f of ['name', 'look', ...(k === 'cast' ? ['personality'] : [])]) x[f] = String(x[f] ?? '');
+  }
   return { ...old, ...sp };
 }
 
