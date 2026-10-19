@@ -32,16 +32,17 @@ Arabic-speaking general audience, 15 and over: adults and older teens. A quiet t
 ```text
 NARRATOR = ORION, the invisible being who lives in Kira's phone; first person from start to end. Keep every word of the narration, in order; do not add, reword or explain.
 
-WHISPER LINES: each line written «Speaker: …» is the beings' private language. Give EACH its own shot, keep the line word for word in "narration" WITH the speaker's name, and show the speaking being in that frame. Lines in “…” are text on Kira's phone: show the phone at an angle, the screen only a soft glow; never paint letters.
+WHISPER LINES: each line written «Speaker: …» is the beings' private language. Put it in the shot's "whispers" ({"speaker": cast id, "text": the line word for word, without the name}), never in "narration": the narrator does not read it. At most 2 whispers per shot; show the speaking being in that frame. Orion's «لا.» gets "plain": true. The two shots with the three typing dots on Kira's phone get "overlay": "typing" (the player draws the dots). Lines in “…” are text on Kira's phone: show the phone at an angle, the screen only a soft glow; never paint letters.
 
 TWO LAYERS: human layer = real room, warm practical light, alive. Hidden layer = the same room, time frozen (dust hanging, tear stopped), desaturated cold blue-grey; only the beings and threads of light have colour. Humans never see, look at or react to the beings. At each «رمشة» (blink): an extreme close-up of Kira's eye or of the phone, transition "zoom-in" into the hidden layer; come back with a hard "cut".
 
-CAST: use exactly these 5 ids and copy each look word for word:
+CAST: use exactly these 6 ids and copy each look word for word; the five beings are "kind": "being" with the "color" and "glyph" given, kira is "kind": "human":
 - kira: 22-year-old woman, olive skin, oval face, tired dark-brown eyes, thick dark eyebrows, long dark-brown hair in a loose messy knot with one silver-white streak at the left temple, faded mustard-yellow work overshirt over a charcoal T-shirt, cheap black wristwatch
-- orion: translucent slender humanoid woven from fine glowing cyan-blue light threads, smooth faceless head with two soft white eye-points, three thin rings of light on each wrist, lower body unravelling into a stream of threads that flows from a phone screen
-- the-eye: colossal ring of cold white light hanging flat under the ceiling, concentric thin silver rings inside it, no face, an empty dark centre, hundreds of hair-thin white filaments descending from it to every camera and screen
-- the-broker: tall elegant humanoid of flowing molten-gold light and warm golden smoke, smooth eyeless golden face with a wide fixed smile, silhouette of a tailored suit, long thin fingers trailing fine golden strings, pouring out of a dark screen like liquid
-- small-ones: two tiny palm-sized glowing sprites with round firefly-like bodies and two bright dot eyes, a lime-green one perched on a cheap black wristwatch, a frosty pale-blue one perched on a small fridge, each tied to its device by a short light thread
+- orion (#4fd1e8, arcs): translucent slender humanoid woven from fine glowing cyan-blue light threads, smooth faceless head with two soft white eye-points, three thin rings of light on each wrist, lower body unravelling into a stream of threads that flows from a phone screen
+- the-eye (#eaf2ff, rings): colossal ring of cold white light hanging flat under the ceiling, concentric thin silver rings inside it, no face, an empty dark centre, hundreds of hair-thin white filaments descending from it to every camera and screen
+- the-broker (#e8a74f, curls): tall elegant humanoid of flowing molten-gold light and warm golden smoke, smooth eyeless golden face with a wide fixed smile, silhouette of a tailored suit, long thin fingers trailing fine golden strings, pouring out of a dark screen like liquid
+- the-watch (#b8f25c, dots), named الساعة: tiny palm-sized glowing lime-green sprite with a round firefly-like body and two bright dot eyes, perched on a cheap black wristwatch, tied to it by a short light thread
+- the-fridge (#cdebff, dots), named الثلّاجة: tiny palm-sized glowing frosty pale-blue sprite with a round firefly-like body and two bright dot eyes, perched on a small fridge, tied to it by a short light thread
 
 LOCATIONS: sleeping-city (3 a.m., concrete blocks, sodium lights, windows glowing screen-blue), kira-workshop (narrow phone-repair workshop, lit only by the phone), workshop-hidden (same room frozen, cold blue-grey), city-above (the Eye as a colossal white ring in the clouds, filaments into every window).
 
@@ -99,13 +100,13 @@ NARRATOR = ORION, the invisible being who lives in a young woman's phone; first 
 
 FIRST SHOT: an extreme close-up of a dark phone screen in a dark room, its cold glow on a tired eye; the three typing dots will be added by the player, so paint only the glow. This is the hook: no title-card mood, no slow build.
 
-WHISPER LINES: each line written «Speaker: …» gets its own shot; keep it word for word in "narration" WITH the speaker's name; show that being alone in the frame. Humans never see the beings.
+WHISPER LINES: each line written «Speaker: …» goes in its shot's "whispers" (speaker = cast id, text word for word without the name), never in "narration"; one whisper per shot, with that being alone in the frame. «Orion: No.» gets "plain": true. The first and last shots (the three dots) get "overlay": "typing". Humans never see the beings.
 
 TWO LAYERS: the human layer is warm and alive; the hidden layer is the same room frozen in cold blue-grey where only the beings glow. Cut between them hard.
 
 VERTICAL: one subject per frame, centred, faces in the upper third, bottom fifth kept calm for subtitles. Use the vertical lines of threads and filaments.
 
-CAST: use exactly these 4 ids and copy each look word for word:
+CAST: use exactly these 4 ids and copy each look word for word; orion (#4fd1e8, arcs), the-eye (#eaf2ff, rings) and the-broker (#e8a74f, curls) are "kind": "being" with that "color" and "glyph":
 - kira: 22-year-old woman, olive skin, oval face, tired dark-brown eyes, thick dark eyebrows, long dark-brown hair in a loose messy knot with one silver-white streak at the left temple, faded mustard-yellow work overshirt over a charcoal T-shirt, cheap black wristwatch
 - orion: translucent slender humanoid woven from fine glowing cyan-blue light threads, smooth faceless head with two soft white eye-points, three thin rings of light on each wrist, lower body unravelling into a stream of threads that flows from a phone screen
 - the-eye: colossal ring of cold white light hanging flat under the ceiling, concentric thin silver rings inside it, no face, an empty dark centre, hundreds of hair-thin white filaments descending from it to every camera and screen

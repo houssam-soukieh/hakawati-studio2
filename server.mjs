@@ -18,6 +18,7 @@ import { expandCast, librarySymbols } from './lib/svg.mjs';
 import { enqueue, subscribe, listJobs, getJob, stopJob } from './lib/jobs.mjs';
 import { loadSettings } from './lib/settings.mjs';
 import { t } from './lib/i18n.mjs';
+import { GLYPHS, HEX } from './lib/whisper.mjs';
 
 const PORT = Number(process.env.HAKAWATI_PORT ?? 4848);
 const PUBLIC = path.join(ROOT, 'public');
@@ -60,6 +61,9 @@ function projectView(id) {
     final: p.assets.final ? { ...p.assets.final, url: `/files/${id}/${p.assets.final.file}?v=${p.assets.final.at}`, srtUrl: `/files/${id}/${p.assets.final.srt}`, thumbUrl: `/files/${id}/${p.assets.final.thumb}?v=${p.assets.final.at}` } : null };
 }
 
+/** Text from the editor: a string, no control characters (newlines and tabs kept), at most n characters. */
+const cleanText = (s, n) => String(s ?? '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').trim().slice(0, n);
+
 /** Screenplay edits from the storyboard: keep the shape sane, never trust ids blindly. */
 function cleanScreenplay(sp, old) {
   if (!sp || !Array.isArray(sp.scenes)) throw new Error('bad screenplay');
@@ -78,6 +82,11 @@ function cleanScreenplay(sp, old) {
       if (!TRANSITIONS.includes(sh.transition)) sh.transition = 'cut';
       if (!SHOT_TYPES.includes(sh.shotType)) sh.shotType = 'medium';
       sh.seconds = Math.min(15, Math.max(1.5, Number(sh.seconds) || 4));
+      // the beings' private language: [{speaker: cast id, text, plain?}], at most 20 a shot; the "typing…" bubble
+      sh.whispers = sh.kind === 'shot' && Array.isArray(sh.whispers) ? sh.whispers.filter(w => w && typeof w === 'object')
+        .map(w => ({ speaker: SAFE_ID.test(String(w.speaker ?? '')) ? String(w.speaker) : '', text: cleanText(w.text, 600), ...(w.plain === true && { plain: true }) }))
+        .filter(w => w.text).slice(0, 20) : [];
+      sh.overlay = sh.kind === 'shot' && sh.overlay === 'typing' ? 'typing' : '';
     }
   }
   sp.scenes = sp.scenes.filter(sc => sc.shots.length);
@@ -88,6 +97,13 @@ function cleanScreenplay(sp, old) {
     sp[k] = sp[k].filter(x => x && typeof x === 'object' && SAFE_ID.test(x.id ?? ''));
     for (const x of sp[k]) for (const f of ['name', 'look', ...(k === 'cast' ? ['personality'] : [])]) x[f] = String(x[f] ?? '');
   }
+  for (const c of Array.isArray(sp.cast) ? sp.cast : []) { // a being: its whisper colour and glyph dialect
+    c.kind = c.kind === 'being' ? 'being' : 'human';
+    c.color = HEX.test(c.color ?? '') ? c.color.toLowerCase() : '';
+    c.glyph = GLYPHS.includes(c.glyph) ? c.glyph : '';
+  }
+  const speakers = new Set((sp.cast ?? old?.cast ?? []).map(c => c.id)); // a whisper by someone not in the cast keeps its text
+  for (const sc of sp.scenes) for (const sh of sc.shots) for (const w of sh.whispers) if (!speakers.has(w.speaker)) w.speaker = '';
   return { ...old, ...sp };
 }
 

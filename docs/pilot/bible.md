@@ -54,7 +54,7 @@ Photoreal contemporary drama in our world today, unbranded devices. Two layers: 
 
 ### Leave room for subtitles
 
-Keep the bottom 20% of every frame calm, with no faces or key details there. The **Eye's** whispers appear at the top of the frame, so for those shots keep the top 15% calm instead.
+Keep the bottom 20% of every frame calm, with no faces or key details there. Whispers appear at the top of the frame, so in shots with whispers keep the top 15% calm too.
 
 ### Vertical teaser (9:16)
 
@@ -260,13 +260,13 @@ The whisper language is never painted. The Studio's player draws it over the pic
 | Kind of line | Look |
 |---|---|
 | Narrator (Orion speaking to the viewer) | white Cairo captions at the bottom, as now |
-| Whisper | Cairo SemiBold in the being's colour with a soft glow, the speaker's name in small letters above it; near the speaker when possible, otherwise at the bottom; the Eye's lines come from the top |
+| Whisper | Cairo SemiBold in the being's colour with a soft glow, the speaker's name in small letters above it; in the upper part of the frame, so it never meets the narrator's captions at the bottom |
 | Text on a human screen (lines in “…” in the scripts) | a plain chat-bubble card next to the phone, white on dark grey |
 | The three typing dots | three soft white dots pulsing in a grey bubble, drawn by the player; the painted phone shows only its glow |
 
 **Orion's «لا».** This one line has no glyph burst. It appears alone and plain, with no glow, and every other whisper stops. No being has ever said it.
 
-> Until the player supports styled whisper lines, the narrator reads them («العين: …») and they appear as ordinary captions. The marks in the script are already in place for when the feature is built.
+> **In the Studio.** Each shot has `whispers` (`speaker` = the being's cast id, `text` word for word); a being in the cast has `kind: being`, its `color` and its `glyph` dialect (`arcs`, `rings`, `curls`, `dots`, `squares`, `mirror`, `echo`). The narrator never reads a whisper: the soundtrack carries an unintelligible whisper texture in that being's own voice, under the narration. A whisper marked `plain` is Orion's «لا». A shot with `overlay: typing` gets the typing bubble.
 
 ---
 
