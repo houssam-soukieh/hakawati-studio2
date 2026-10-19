@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hakawati Studio</title>
+<!-- the last interface language, so an Arabic Studio does not flash left-to-right before Settings load -->
+<script>try { if (localStorage.getItem('hakawati.lang') === 'ar') { document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl'; } } catch {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@700&family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -14,23 +16,29 @@
 <div id="app">
   <aside id="side">
     <div class="brand">
-      <div class="lamp">🏮</div>
+      <div class="lamp" aria-hidden="true">🏮</div>
       <div>
         <div class="brand-name">حكواتي</div>
         <div class="brand-tag" data-t="tagline">Hakawati Studio · story to film</div>
       </div>
     </div>
     <button class="btn primary wide" id="newBtn" data-t="newStory">＋ New story</button>
-    <div class="side-title" data-t="yourStories">Your stories</div>
-    <div id="projects"></div>
+    <div class="side-title" data-t="yourStories" id="storiesTitle">Your stories</div>
+    <nav id="projects" aria-labelledby="storiesTitle"></nav>
     <div class="side-foot">
       <button class="engine-chip" id="engineChip" data-t-title="engineTitle" title="Engine and settings"><span class="dot"></span><span id="engineName">…</span></button>
-      <button class="lang-switch" id="langBtn" title="Interface language">العربية</button>
+      <button class="lang-switch" id="langBtn" data-t-title="langTitle" title="Interface language">العربية</button>
     </div>
   </aside>
+  <div id="scrim" hidden></div>
 
   <main id="main">
-    <div id="view"></div>
+    <header id="topbar">
+      <button class="icon-btn" id="navBtn" aria-controls="side" aria-expanded="false" data-t-title="menu" title="Menu">☰</button>
+      <a class="top-brand" href="#/"><span aria-hidden="true">🏮</span><span class="brand-name">حكواتي</span></a>
+      <button class="icon-btn" id="topSettings" data-t-title="engineTitle" title="Engine and settings"><span class="dot"></span>⚙</button>
+    </header>
+    <div id="view"><div class="loading" aria-busy="true"><span class="lamp">🏮</span></div></div>
   </main>
 </div>
 
@@ -38,16 +46,16 @@
 <div id="dock" class="collapsed">
   <div id="dockBar">
     <div class="job-line"><span id="jobIcon">●</span> <span id="jobLabel" data-t="noJobs">No jobs</span></div>
-    <div class="job-prog"><div id="jobProg"></div></div>
+    <div class="job-prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="jobBar"><div id="jobProg"></div></div>
     <span id="jobStage" class="muted"></span>
     <button class="btn ghost sm" id="stopBtn" data-t="stop" hidden>⏹ Stop</button>
-    <button class="btn ghost sm" id="dockToggle">Log ▴</button>
+    <button class="btn ghost sm" id="dockToggle" aria-controls="log" aria-expanded="false">Log ▴</button>
   </div>
-  <pre id="log"></pre>
+  <pre id="log" aria-live="polite"></pre>
 </div>
 
-<dialog id="settings"></dialog>
-<dialog id="modal"></dialog>
+<dialog id="settings" aria-labelledby="setTitle"></dialog>
+<dialog id="modal" aria-labelledby="modalTitle"></dialog>
 <script src="app.js" type="module"></script>
 </body>
 </html>
