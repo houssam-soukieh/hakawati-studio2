@@ -16,6 +16,32 @@ Disk: ≈ 37 GB of models + ≈ 7 GB ComfyUI + projects. Keep **≥ 60 GB free o
 
 Marks: **[v]** = checked against the source while writing this (Oct 2026); **[?]** = not verified, from memory or a third-party listing — check on the page.
 
+## Automatic install (recommended)
+
+`scripts\install-all.bat` does every step of this guide by itself. It is idempotent: run it again at any time, finished steps are skipped and broken downloads resume.
+
+1. On GitHub open the repo → *Code → Download ZIP*, extract it anywhere (e.g. `Downloads`). You only need `scripts\install-all.bat` and `scripts\install-all.ps1` from it.
+2. Double-click `scripts\install-all.bat` (or right-click `install-all.ps1` → *Run with PowerShell*). Do **not** start it as administrator; it asks for UAC only where needed (Node MSI, winget packages, the page file).
+3. It runs 9 steps: (1) Node 22, Git, Python 3.12 + edge-tts, 7-Zip, Chrome (Edge as fallback), ffmpeg — via winget or the official installers, skipping what is already there; (2) NVIDIA driver check (warns below R580, continues); (3) page file — if RAM + page file < 48 GB it asks `y/c/N` and sets 32768 MB on E: (or C:), **restart needed**; (4) `git clone https://github.com/houssam-soukieh/hakawati-studio2 E:\hakawati` (or `git pull`) + `npm install` — a private repo opens a GitHub sign-in window; (5) ComfyUI portable from the latest GitHub release → `E:\ComfyUI`; (6) the two custom nodes + their requirements + ComfyUI-Manager; (7) the 9 model files of §5 (~37 GB) with resume, size and SHA256 checks (the SHA256 comes from Hugging Face's `X-Linked-Etag` header; checking a 10 GB file takes 1–2 min); (8) Studio settings: pictures = ComfyUI, checkpoint = RealVisXL, IP-Adapter on — an existing API key is kept, the old file is saved as `settings.json.bak`; (9) starts ComfyUI briefly, runs `check-setup.ps1`, prints a ✓/✗ summary with GB downloaded and the exact retry command for anything that failed.
+4. Everything is logged to `E:\hakawati-install.log` (UTF-8; Notepad shows the Arabic lines correctly — the console may not).
+
+Options (append to the `.bat` or the `.ps1`):
+
+| Option | Effect |
+|---|---|
+| `-DryRun` | print every action and URL, change nothing |
+| `-OnlyModels` / `-SkipModels` / `-SkipWan` | models only / everything but models / leave out the 3 Wan 2.2 files (≈ 18.2 GB) |
+| `-Steps 6` · `-Steps 1,4` · `-Steps 5-7` | run only those steps |
+| `-Proxy http://HOST:PORT` | used by curl, git, pip, npm and winget |
+| `-HfEndpoint https://hf-mirror.com` | Hugging Face mirror. Without it the script tries `huggingface.co` first and switches to `hf-mirror.com` automatically if that fails (and sets the user variable `HF_ENDPOINT` so ComfyUI nodes use the mirror too) |
+| `-Root D:\` | install under another drive (`D:\hakawati`, `D:\ComfyUI`) |
+| `-Yes` | answer yes to the page-file question |
+| `-NoComfyTest` | do not start ComfyUI in step 9 |
+
+Tested so far only on Linux with PowerShell 7 against stub tools and a local fake Hugging Face/GitHub server (dry run, downloads with resume, SHA256 mismatch, sub-folder move, settings merge, endpoint failure) and linted for Windows PowerShell 5.1 with PSScriptAnalyzer. **Not yet run on real Windows** (winget, MSI/EXE installers, UAC, page file, 7-Zip, real ComfyUI start) — the first run on the desktop is the real test; send the log if a step fails.
+
+The rest of this guide is the same procedure by hand.
+
 ---
 
 ## 0. Before you start
@@ -179,6 +205,7 @@ Close Chrome/games while Wan runs. RAM peak for a Wan job exceeds 16 GB → the 
 | `scripts\start-comfyui.bat` | starts `E:\ComfyUI` on `127.0.0.1:8188` |
 | `scripts\start-studio.bat` | starts the Studio (installs packages on first run) and opens `http://127.0.0.1:4848`; if it already runs, only opens the browser |
 | `scripts\check-setup.ps1` | ✓/✗ table of tools, ComfyUI, nodes, model files |
+| `scripts\install-all.bat` / `.ps1` | the automatic installer (top of this guide) |
 
 `start-comfyui.bat` runs (variables at the top of the file):
 
@@ -281,7 +308,7 @@ Wan 2.2's native size is 1280×704, up to 121 frames at 24 fps [v ComfyUI exampl
 | RealVisXL V5.0 Lightning | sources disagree (OpenRAIL++ vs CC-BY-NC-ND) [?] |
 | Juggernaut XL Lightning | RunDiffusion licence [?] |
 
-For commercial releases: switch depth to Depth Anything V2 Small, replace 4x-UltraSharp (e.g. a permissively licensed ESRGAN model), and confirm the checkpoint's licence.
+The owner confirmed (2026-10-19) that production is **non-commercial**, so Depth Anything V2 Large and 4x-UltraSharp stay. If that ever changes: switch depth to Depth Anything V2 Small, replace 4x-UltraSharp with a permissively licensed upscaler, and confirm the checkpoint's licence.
 
 ## 12. Verification record
 

@@ -18,6 +18,32 @@
 
 الرموز: **[v]** = تحقّقتُ منه من المصدر أثناء الكتابة (تشرين الأول 2026)؛ **[?]** = غير متحقَّق، من الذاكرة أو من قائمة طرف ثالث — راجعه في الصفحة نفسها.
 
+## التثبيت التلقائي (المستحسن)
+
+الملف `scripts\install-all.bat` ينفّذ كل خطوات هذا الدليل وحده. ويمكن تشغيله مراراً بأمان: ما اكتمل يُتخطّى، والتنزيل المنقطع يُستأنف.
+
+1. افتح المستودع على GitHub ← *Code ← Download ZIP*، وفكّه في أي مكان (مثل `Downloads`). لا تحتاج منه إلا `scripts\install-all.bat` و`scripts\install-all.ps1`.
+2. انقر نقراً مزدوجاً على `scripts\install-all.bat` (أو زر الفأرة الأيمن على `install-all.ps1` ← *Run with PowerShell*). **لا** تشغّله بصلاحيات المدير؛ فهو يطلب UAC حيث يلزم فقط (مثبّت Node وحزم winget وملف الترحيل).
+3. ينفّذ 9 خطوات: (1) Node 22 وGit وPython 3.12 مع edge-tts و7-Zip وChrome (وEdge بديلاً) وffmpeg — عبر winget أو المثبّتات الرسمية، متخطياً الموجود؛ (2) فحص تعريف NVIDIA (ينبّه إن كان أقدم من R580 ويتابع)؛ (3) ملف الترحيل — إن كانت الذاكرة مع ملف الترحيل أقل من 48 GB يسأل `y/c/N` ويضبط 32768 MB على E: (أو C:)، **ويلزم إعادة التشغيل**؛ (4) `git clone https://github.com/houssam-soukieh/hakawati-studio2 E:\hakawati` (أو `git pull`) ثم `npm install` — إن كان المستودع خاصاً تظهر نافذة تسجيل دخول GitHub؛ (5) ComfyUI المحمول من آخر إصدار على GitHub ← `E:\ComfyUI`؛ (6) العقدتان الإضافيتان ومتطلباتهما ومدير ComfyUI؛ (7) ملفات النماذج التسعة في §5 (نحو 37 GB) مع الاستئناف والتحقق من الحجم وSHA256 (تأتي البصمة من ترويسة `X-Linked-Etag` في Hugging Face؛ فحص ملف 10 GB يستغرق 1–2 دقيقة)؛ (8) إعدادات الاستوديو: الصور = ComfyUI، النموذج = RealVisXL، IP-Adapter مفعّل — ويُحفظ مفتاح API الموجود كما هو، وتُنسخ النسخة السابقة إلى `settings.json.bak`؛ (9) يشغّل ComfyUI مؤقتاً، ويشغّل `check-setup.ps1`، ويطبع خلاصة ✓/✗ مع حجم ما نُزّل والأمر الدقيق لإعادة أي بند فشل.
+4. كل شيء يُسجَّل في `E:\hakawati-install.log` (بترميز UTF-8؛ يعرض Notepad الأسطر العربية صحيحة، وقد لا تعرضها نافذة الطرفية).
+
+الخيارات (تُضاف بعد اسم ملف `.bat` أو `.ps1`):
+
+| الخيار | الأثر |
+|---|---|
+| `-DryRun` | يطبع كل إجراء ورابط دون تغيير شيء |
+| `-OnlyModels` / `-SkipModels` / `-SkipWan` | النماذج فقط / كل شيء عدا النماذج / بلا ملفات Wan 2.2 الثلاثة (نحو 18.2 GB) |
+| `-Steps 6` · `-Steps 1,4` · `-Steps 5-7` | تنفيذ هذه الخطوات وحدها |
+| `-Proxy http://HOST:PORT` | يُمرَّر إلى curl وgit وpip وnpm وwinget |
+| `-HfEndpoint https://hf-mirror.com` | مرآة Hugging Face. بدونه يجرّب السكربت `huggingface.co` أولاً، وإن فشل ينتقل تلقائياً إلى `hf-mirror.com` (ويضبط متغير المستخدم `HF_ENDPOINT` كي تستخدم عقد ComfyUI المرآة أيضاً) |
+| `-Root D:\` | التثبيت على قرص آخر (`D:\hakawati` و`D:\ComfyUI`) |
+| `-Yes` | الموافقة على سؤال ملف الترحيل |
+| `-NoComfyTest` | لا يشغّل ComfyUI في الخطوة 9 |
+
+اختُبر حتى الآن على Linux فقط بـ PowerShell 7 مقابل أدوات بديلة وخادم محلي يحاكي Hugging Face وGitHub (التشغيل التجريبي، التنزيل مع الاستئناف، عدم تطابق SHA256، نقل ملف من مجلد فرعي، دمج الإعدادات، تعذّر الوصول إلى المصدر)، وفُحص بـ PSScriptAnalyzer للتوافق مع Windows PowerShell 5.1. **لم يُشغَّل بعد على ويندوز حقيقي** (winget، مثبّتات MSI/EXE، UAC، ملف الترحيل، 7-Zip، تشغيل ComfyUI فعلياً) — التشغيل الأول على الحاسوب المكتبي هو الاختبار الحقيقي؛ أرسل ملف السجل إن فشلت خطوة.
+
+بقية هذا الدليل هي الإجراء نفسه يدوياً.
+
 ---
 
 ## 0. قبل البدء
@@ -240,6 +266,7 @@ Get-Model "upscale_models\4x-UltraSharp.pth"                                "$HF
 | `scripts\start-comfyui.bat` | يشغّل `E:\ComfyUI` على `127.0.0.1:8188` |
 | `scripts\start-studio.bat` | يشغّل الاستوديو (ويثبّت الحزم في المرة الأولى) ويفتح `http://127.0.0.1:4848`؛ وإن كان يعمل أصلاً يفتح المتصفح فقط |
 | `scripts\check-setup.ps1` | جدول ✓/✗ للأدوات وComfyUI والعقد وملفات النماذج |
+| `scripts\install-all.bat` / `.ps1` | المثبّت التلقائي (أول هذا الدليل) |
 
 ينفّذ `start-comfyui.bat` الأمر التالي (المتغيرات في أعلى الملف):
 
@@ -354,7 +381,7 @@ powershell -ExecutionPolicy Bypass -File scripts\check-setup.ps1
 | RealVisXL V5.0 Lightning | المصادر متعارضة (OpenRAIL++ مقابل CC-BY-NC-ND) ‏[?] |
 | Juggernaut XL Lightning | ترخيص RunDiffusion ‏[?] |
 
-للإصدارات التجارية: استخدم Depth Anything V2 Small للعمق، واستبدل 4x-UltraSharp بنموذج تكبير ذي ترخيص متساهل، وتأكد من ترخيص نموذج SDXL.
+أكّد المالك (2026-10-19) أن الإنتاج **غير تجاري**، لذا يبقى Depth Anything V2 Large و4x-UltraSharp. وإن تغيّر ذلك يوماً: استخدم Depth Anything V2 Small للعمق، واستبدل 4x-UltraSharp بنموذج تكبير ذي ترخيص متساهل، وتأكد من ترخيص نموذج SDXL.
 
 ## 12. سجل التحقق
 

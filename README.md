@@ -30,7 +30,9 @@ flowchart LR
 
 ## Quick start (Windows)
 
-Full step-by-step install with exact model files: **[docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md)** (Arabic: [docs/SETUP-WINDOWS.ar.md](docs/SETUP-WINDOWS.ar.md)).
+**One click:** download the repo ZIP, double-click `scripts\install-all.bat`. It installs the tools, clones the Studio to `E:\hakawati`, installs ComfyUI to `E:\ComfyUI` with the custom nodes and all models (~37 GB, resumable), writes the picture settings and runs the setup check. `-DryRun` shows what it would do; `-Proxy` / `-HfEndpoint https://hf-mirror.com` for blocked networks.
+
+By hand, step by step with exact model files: **[docs/SETUP-WINDOWS.md](docs/SETUP-WINDOWS.md)** (Arabic: [docs/SETUP-WINDOWS.ar.md](docs/SETUP-WINDOWS.ar.md)).
 
 1. Install Node 22 LTS, Git, ffmpeg (gyan.dev, on PATH), Python 3.12 + `python -m pip install -U edge-tts`, Google Chrome.
 2. `npm install` in the repo folder.
@@ -87,7 +89,7 @@ node make.mjs run <projectId> [all|script|film|voice,cast,art,render,assemble] [
 | `lib/render.mjs`, `lib/assemble.mjs` | frame-exact capture; ffmpeg montage and score |
 | `lib/i18n.mjs`, `lib/styles.mjs` | UI/log strings (en/ar); styles, cameras, transitions, sizes |
 | `public/` | Studio UI (`index.html`, `app.js`, `app.css`) and `player.html` |
-| `scripts/` | Windows start scripts and setup check |
+| `scripts/` | Windows installer (`install-all`), start scripts, setup check |
 | `docs/` | setup guides, test story |
 
 ## License
@@ -116,7 +118,9 @@ All rights reserved — Soukieh Bros Engineering Press.
 
 ## البدء السريع (ويندوز)
 
-دليل التثبيت الكامل بأسماء ملفات النماذج الدقيقة: **[docs/SETUP-WINDOWS.ar.md](docs/SETUP-WINDOWS.ar.md)**.
+**بنقرة واحدة:** نزّل المستودع بصيغة ZIP وانقر نقراً مزدوجاً على `scripts\install-all.bat`. يثبّت الأدوات، ويستنسخ الاستوديو إلى `E:\hakawati`، ويثبّت ComfyUI في `E:\ComfyUI` مع العقد وكل النماذج (نحو 37 GB، قابل للاستئناف)، ويكتب إعدادات الصور ويشغّل الفحص. الخيار `-DryRun` يعرض ما سيفعله، و`-Proxy` أو `-HfEndpoint https://hf-mirror.com` للشبكات المحجوبة.
+
+يدوياً، خطوة بخطوة بأسماء ملفات النماذج الدقيقة: **[docs/SETUP-WINDOWS.ar.md](docs/SETUP-WINDOWS.ar.md)**.
 
 1. ثبّت Node 22 LTS وGit وffmpeg (بناء gyan.dev على PATH) وPython 3.12 ثم `python -m pip install -U edge-tts`، وGoogle Chrome.
 2. نفّذ `npm install` في مجلد المستودع.
