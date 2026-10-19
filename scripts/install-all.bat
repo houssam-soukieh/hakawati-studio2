@@ -5,6 +5,8 @@ rem   install-all.bat -DryRun
 rem   install-all.bat -OnlyModels -SkipWan
 rem   install-all.bat -Proxy http://127.0.0.1:8080 -HfEndpoint https://hf-mirror.com
 setlocal
+rem UTF-8 console, so names and paths with non-ASCII letters print correctly
+chcp 65001 >nul
 if not exist "%~dp0install-all.ps1" (
   echo [x] install-all.ps1 must be in the same folder as this file.
   pause

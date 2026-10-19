@@ -80,7 +80,8 @@ function Add-Log([string]$msg) {
 function Say([string]$en, [string]$ar = '', [string]$color = 'Gray') {
   Write-Host $en -ForegroundColor $color
   Add-Log $en
-  if ($ar) { Write-Host "  $ar" -ForegroundColor $color; Add-Log "  $ar" }
+  # the old console (conhost) cannot shape Arabic and garbles it: there the Arabic goes to the log only
+  if ($ar) { if (-not $plainConsole) { Write-Host "  $ar" -ForegroundColor $color }; Add-Log "  $ar" }
 }
 function Dry([string]$what) { Write-Host "  [dry-run] $what" -ForegroundColor DarkCyan; Add-Log "[dry-run] $what" }
 function Header([int]$n, [string]$en, [string]$ar) {
@@ -536,7 +537,7 @@ function Step-PageFile {
   $drive = $PageFileDrive
   if (-not $Yes) {
     Write-Host ("  Set a fixed {0} MB page file on {1}:? [y = {1}:, c = C:, N = skip]" -f $PageFileMB, $PageFileDrive) -ForegroundColor Yellow
-    Write-Host ("  هل أضبط ملف ترحيل ثابتاً بحجم {0} MB على {1}:؟ [y = {1}:، c = C:، N = تخطٍّ]" -f $PageFileMB, $PageFileDrive) -ForegroundColor Yellow
+    if (-not $plainConsole) { Write-Host ("  هل أضبط ملف ترحيل ثابتاً بحجم {0} MB على {1}:؟ [y = {1}:، c = C:، N = تخطٍّ]" -f $PageFileMB, $PageFileDrive) -ForegroundColor Yellow }
     $ans = Read-Host '  y/c/N'
     if ($ans -match '^[cC]') { $drive = 'C' } elseif ($ans -notmatch '^[yY]') { Add-Result 3 'Page file' 'warn' "skipped by user (virtual memory $vm GB)"; return }
   }
