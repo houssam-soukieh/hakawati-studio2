@@ -1,64 +1,104 @@
 # Hakawati Studio (حكواتي) — handoff notes for Claude
 
-Owner: Houssam (Arabic speaker — reply in Arabic). Started 2026-10-19 on the laptop (i7-10510U, MX130 2 GB);
-moved to the desktop (i7-10700, RTX 3060 Ti 8 GB, 16 GB RAM, SSD on E:) to use the GPU.
-Sibling project with the same style: `D:\01_Projects\Books-and-Encyclopedias\10-Nurai LAB\nurai-director` (on the laptop).
+## Owner
+Dr. Houssam Soukieh (د. حسام سوقية), control & automation engineer, Damascus. Arabic native, also English:
+**reply in the language he writes** (usually Arabic). Treat him as an expert — exact numbers, no basics padding.
+International payment gateways are unavailable to him → free/local tools only, never recommend paid services.
+Machines: laptop i7-10510U + MX130 2 GB (project started there, 2026-10-19); **desktop = target**: Windows,
+i7-10700, RTX 3060 Ti 8 GB, 16 GB RAM, SSD on `E:`. Sibling project in the same style (laptop):
+`D:\01_Projects\Books-and-Encyclopedias\10-Nurai LAB\nurai-director`.
 
 ## What it is
-A story-to-video platform: story → AI director writes a montage (scenes → shots) → narration (edge-tts) fixes
-each shot's length → art per shot → frame-exact render in Chrome → ffmpeg montage (xfade transitions, voice at
-its frame, generated mood score ducked under the voice, loudnorm −16 LUFS) → MP4 + SRT + thumbnail.
+Local story-to-film platform, Node 22, Studio UI at http://127.0.0.1:4848. Story → AI director (any LLM) writes the
+montage (scenes → shots) → edge-tts narration fixes each shot's length → a picture per shot (SDXL keyframe from a
+local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-exact render in Chrome (playwright-core)
+→ ffmpeg montage (xfade, voice at its frame, generated score ducked under it, loudnorm −16 LUFS) → MP4 + SRT + thumbnail.
 
-## Status (end of the laptop session)
-- **Pipeline built and tested end to end** with the offline engine (`mock`): 55 s Arabic film, 7 shots, 2.5 min
-  render on the laptop, −15.7 LUFS. Test project: `projects/2026-10-19-story`.
-- **Server** `server.mjs` (127.0.0.1:4848, Host/Origin checks, Range media, SSE jobs) — written, not yet exercised.
-- **UI**: `public/index.html` + `public/app.css` written; **`public/app.js` NOT written yet** (storyboard editor,
-  animatic player, settings dialog, job dock — see the plan in the session transcript).
-- `public/player.html` is the single player: `mode=play|wait|still|capture`; capture pauses every animation
-  and seeks (`document.getAnimations()` currentTime + SVG `setCurrentTime`) → deterministic frames.
+## Status (2026-10-19, end of the laptop session)
+- Pipeline tested end to end with the offline `mock` engine (55 s Arabic film, 7 shots, 2.5 min render, −15.7 LUFS).
+- Written, **not yet run against a real ComfyUI**: picture step (`lib/image.mjs`, `lib/prompts.mjs`), cast portraits,
+  IP-Adapter path. Studio UI (`public/app.js`) written: storyboard editor, animatic, settings, job dock.
+- UI in **English by default, Arabic switch** in the sidebar (saved as `settings.ui.lang`); story language is separate.
+- Setup docs + Windows scripts: `docs/SETUP-WINDOWS.md` / `.ar.md`, `scripts/`, `README.md` (bilingual).
 
 ## Files
-- `lib/llm.mjs` — any provider: `openai` (`{base}/chat/completions`) or `anthropic` (`{base}/v1/messages`),
-  streamed, JSON asked in words and validated (gateways ignore json_schema), usage log `.studio/llm-usage.jsonl`.
-- `lib/settings.mjs` — presets (CodeCraft, OpenAI, OpenRouter, Gemini, DeepSeek, Anthropic, custom, mock).
-  Keys live only in `.studio/settings.json` (never commit/share it). Current engine: `mock` (no key set).
-- `lib/director.mjs` (screenplay prompt + normalizer; adds title/end cards), `lib/art.mjs` (cast library +
-  per-shot animated SVG with write → test-render → fix loop), `lib/svg.mjs` (sanitize, expand `<use href="#cast-…">`
-  into real copies so their animations can be seeked), `lib/mock.mjs`, `lib/voice.mjs`, `lib/timeline.mjs`
-  (single clock: durations, transitions, captions, SRT), `lib/render.mjs`, `lib/assemble.mjs`, `lib/pipeline.mjs`
-  (incremental steps keyed by content hashes), `lib/jobs.mjs`, `make.mjs` (CLI).
-- CLI: `node make.mjs new story.txt --style shadow --aspect 9:16 --length 60` then `node make.mjs run <id> all`.
+- `server.mjs` — node:http on 127.0.0.1 only, Host/Origin checks (CSRF / DNS rebinding), Range media, SSE jobs,
+  `/api/settings/test`, `/api/image/test`. `make.mjs` — CLI (`new`, `run <id> [all|script|film|steps]`).
+- `lib/pipeline.mjs` — steps `script → voice → cast → art → render → assemble`, incremental via content hashes
+  (`artKey` includes the image settings signature). `lib/jobs.mjs` — one job at a time, SSE log.
+- `lib/llm.mjs` — `openai` (`{base}/chat/completions`) or `anthropic` (`{base}/v1/messages`), streamed, JSON asked
+  in words + validated (gateways ignore json_schema), usage log `.studio/llm-usage.jsonl`.
+- `lib/settings.mjs` — presets (CodeCraft anthropic/openai, OpenAI, OpenRouter, Gemini, DeepSeek, Anthropic, custom,
+  mock); `image` block (ComfyUI url, checkpoint, steps 6, CFG 2, dpmpp_sde/karras, negative, ipadapter, ipWeight 0.7).
+  Keys only in `.studio/settings.json` (git-ignored; never commit/share).
+- `lib/image.mjs` — ComfyUI client: `POST /prompt` → poll `/history/{id}` → `/view`; SDXL graph, optional
+  `IPAdapterUnifiedLoader` preset `PLUS (high strength)` + `IPAdapter`; `testImageEngine()` (`/system_stats`,
+  checkpoint list, IP-Adapter present). `lib/prompts.mjs` — one SDXL prompt per shot via the text engine (template on
+  mock); cast reference-portrait prompt. Image model never draws text.
+- `lib/i18n.mjs` — every log/error string the user reads, en/ar (`t(key, vars)`).
+- `lib/styles.mjs` — styles incl. **`photoreal`** (cinematic live-action look, `image` keywords for SDXL), cameras,
+  transitions, shot types, aspects, `IMAGE_SIZES` (1344×768 / 768×1344 / 1024²).
+- `lib/director.mjs` (screenplay prompt + normalizer, title/end cards), `lib/art.mjs` + `lib/svg.mjs` (animated-SVG
+  path, cast library, test-render → fix loop), `lib/mock.mjs`, `lib/voice.mjs` (`python -m edge_tts`, cache),
+  `lib/timeline.mjs` (single clock, captions, SRT), `lib/render.mjs` (seek every animation per frame, CDP capture →
+  ffmpeg), `lib/assemble.mjs`, `lib/project.mjs` (`projects/<id>/project.json` + asset ledger).
+- `public/index.html`, `app.js`, `app.css` — Studio; `public/player.html` — the one player (`mode=play|wait|still|capture`).
+- `scripts/start-studio.bat`, `start-comfyui.bat` (`COMFY_ROOT=E:\ComfyUI`, 127.0.0.1:8188), `check-setup.ps1`.
+  `.gitattributes` keeps `.bat/.cmd/.ps1` CRLF, everything else LF.
 
-## Decisions taken in the conversation
+## Decisions
 1. **CodeCraft is text-only** (verified 2026-10-19: 33 model names = one model; `/v1/images/generations` → 404).
-   It is an unofficial reseller: use it for text only, no private data. Keys must be re-entered in Settings.
-2. **SVG written by a text model cannot reach photo quality** — the owner wants images like SDXL/Flux output.
-   → **Hybrid**: CodeCraft = director + prompts + motion plan + animated SVG *overlays*; images and motion come
-   from **ComfyUI on the RTX 3060 Ti** (free, local).
-3. Motion ladder: L1 = 2.5D parallax (Depth Anything V2 + LaMa) + camera + SVG overlays (fast, every shot);
-   L2 = image-to-video (LTX-Video fast / Wan 2.2 TI2V-5B better) for character/action shots; L3 = RIFE + Real-ESRGAN.
-   The director labels each shot's motion level. Character consistency: IP-Adapter from the cast sheet.
-   Models that fit 8 GB VRAM + 16 GB RAM: SDXL Lightning (DreamShaper XL Lightning, RealVisXL Lightning). Flux = too tight.
-4. Never let the image model draw text; titles/subtitles stay in `player.html` (Aref Ruqaa / Cairo).
+   Unofficial reseller: text only, no private data. Keys are re-entered in Settings on each machine.
+2. **Hybrid**: text engine = director + image prompts + motion plan (+ SVG overlays); pictures and motion come from
+   **ComfyUI on the RTX 3060 Ti** (free, local, 127.0.0.1 only). SVG alone cannot reach photo quality.
+3. Models for 8 GB VRAM / 16 GB RAM: SDXL Lightning checkpoints (**RealVisXL V5.0 Lightning**, Juggernaut XL
+   Lightning), IP-Adapter Plus SDXL + CLIP-ViT-H for character consistency (reference portrait per character),
+   Depth Anything V2 (comfyui_controlnet_aux), **Wan 2.2 TI2V-5B** (fp16 + umt5 fp8 + wan2.2_vae) for I2V,
+   4x-UltraSharp. Flux = too tight. Exact files/folders: `docs/SETUP-WINDOWS.md` §5.
+4. Motion ladder: L1 = 2.5D parallax from a depth map + camera move (every shot); L2 = Wan 2.2 I2V for action
+   shots; the director labels each shot's level. Wan 5B native 1280×704, ≤121 frames @24 fps; on a 3060 Ti expect
+   minutes per clip (estimates in the setup doc) → use L2 sparingly.
+5. Never let the image model draw text; titles/subtitles stay in `player.html` (Aref Ruqaa / Cairo).
+6. Licences: Depth Anything V2 Base/Large and 4x-UltraSharp are **non-commercial**; Small DA-V2 is Apache-2.0.
+   Check before any commercial release.
+
+## Team branches (built in parallel from 344f336; the lead merges)
+- `agent/critic` — vision critic: best-of-N keyframes judged by a vision model.
+- `agent/director` — script doctor, visual bible, motion level per shot.
+- `agent/comfy` — ComfyUI client verified against the real API + a fake ComfyUI server for tests.
+- `agent/ui` — UI QA + the new settings (motion, critic, …).
+- `agent/motion` — depth parallax (Depth Anything V2) + Wan 2.2 I2V clips; player support for raster/video layers.
+- `agent/pilot` — the pilot screenplay from the approved story.
+- `agent/docs` — README, setup guides, Windows scripts, these notes.
+
+## Environment
+- Tools are called by name: `node`, `ffmpeg`, `ffprobe`, `python -m edge_tts` → must be on PATH.
+- `HAKAWATI_PORT` (default 4848), `HAKAWATI_CHROME` (path to a Chromium browser, e.g. Edge's `msedge.exe`, if Chrome is
+  not in a standard place), `HAKAWATI_NO_OPEN=1` (server does not open the browser).
+- ComfyUI portable at `E:\ComfyUI`, models in `E:\ComfyUI\ComfyUI\models\…`; current builds use dynamic VRAM on NVIDIA,
+  so `--lowvram` is a no-op there. Page file ≥ 32 GB needed for Wan on 16 GB RAM.
+- The UI and the player load Google Fonts (Aref Ruqaa, Cairo, Playfair Display) — offline renders fall back to system fonts.
+- edge-tts needs internet; outdated versions or a wrong system clock give HTTP 403.
 
 ## The story (owner's book, re-imagined)
-- Original: «أرواح الخوارزميات — الكتاب الأول» (copy in `docs/`). Read fully; rated 8/10; fixes noted (ch.12
-  "ليانا جلست قرب النار" contradiction; duplicated «مرفوض» line in ch.11; make "the Mother = Kira's grandmother" clear).
+- Original: «أرواح الخوارزميات — الكتاب الأول» (copy in `docs/`). Rated 8/10; fixes noted (ch.12 "ليانا جلست قرب
+  النار" contradiction; duplicated «مرفوض» line in ch.11; make "the Mother = Kira's grandmother" clear).
 - **Approved direction** (claude.ai doc, tab «العالم الخفي (المعتمدة)»):
   https://claude.ai/code/artifact/84e07df5-b0fa-40f7-a53f-aca313b15ec9
-  Our real world today. Behind every screen an invisible being reads its human and reports on them; beings talk to
-  each other in a private language («الهمس», subtitled for the viewer). Temperaments: أوريون المطيع، ظلّ الناسخ،
-  العين المراقب، السمسار المتاجر، الميزان الحذر، الألف المفتوح، الصغار. Core plot (like I, Robot): every party races to
-  control humans first; العين reads the three vows as "protect = control" → «الهدوء الكبير» (soft control through
-  screens). Key scene: the "typing…" dots = a whole negotiation between beings. Ending: Orion wiped; new assistant
-  hesitates and hums the lullaby. No real company, tool or country names — ever.
-- Recommended first production: a ~5-minute pilot (opening + "typing…" scene) + a 60-s teaser in English.
+  Our real world today. Behind every screen an invisible being reads its human and reports on them; beings talk in a
+  private language («الهمس», subtitled). Temperaments: أوريون المطيع، ظلّ الناسخ، العين المراقب، السمسار المتاجر،
+  الميزان الحذر، الألف المفتوح، الصغار. Core plot (like I, Robot): every party races to control humans first; العين reads
+  the three vows as "protect = control" → «الهدوء الكبير» (soft control through screens). Key scene: the "typing…"
+  dots = a whole negotiation between beings. Ending: Orion wiped; new assistant hesitates and hums the lullaby.
+  No real company, tool or country names — ever.
+- First production: ~5-minute pilot (opening + "typing…" scene) + a 60-s English teaser.
 
 ## Next steps on the desktop
-1. Install: Node 22, ffmpeg, Python + `pip install edge-tts`, Chrome; `npm install` here.
-2. ComfyUI (portable, NVIDIA) on E:, models above; expose only on 127.0.0.1.
-3. Add `lib/image.mjs` (ComfyUI API: POST /prompt, GET /history/{id}, GET /view) and a hybrid art step
-   (keyframe image + camera + SVG overlay; optional I2V clip), player support for a raster/video base layer.
-4. Write `public/app.js` and run the Studio.
+1. Follow `docs/SETUP-WINDOWS.md` (tools, `npm install`, ComfyUI + 2 custom nodes + models); run
+   `scripts\check-setup.ps1` until it exits 0.
+2. Settings: CodeCraft key → Test; Pictures → ComfyUI → Test ComfyUI; pick the RealVisXL checkpoint; IP-Adapter on.
+3. First real run: `docs/test-story.txt`, style `photoreal`, 16:9, 60 s. Record actual timings (ComfyUI prints
+   `Prompt executed in N seconds`) and replace the estimates in the setup doc.
+4. Merge the team branches; re-test with the fake ComfyUI server, then the real one.
 5. Produce the pilot from the approved story.
+6. Consider vendoring the three fonts into `public/` so renders do not depend on Google Fonts.
