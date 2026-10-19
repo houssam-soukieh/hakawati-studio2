@@ -39,6 +39,11 @@ const T = {
     motionLbl: 'Motion', motionOpts: { 1: '🖼 Still + camera', 2: '🎥 Image to video' }, score: n => `★ ${n}/10`, critique: 'Critic’s note', stClip: 'Image-to-video clip', stDepth: 'Depth map (2.5D)',
     motionOff: 'Image-to-video is off in Settings → Motion, so this shot stays a still picture with a camera move.',
     lens: 'Lens', lensPh: 'e.g. 35mm, shallow depth of field', light: 'Light', lightPh: 'e.g. warm rim light at dusk',
+    whispers: n => `💬 Whispers (${n})`, addWhisper: '＋ Add whisper', speaker: 'Speaker', noSpeaker: '— none —', whisperPh: 'What the being whispers…',
+    plain: 'Plain', plainTitle: 'A plain line, without the whisper effect', typing: 'Typing bubble (“typing…”)', moveUp: 'Move up', moveDown: 'Move down', remove: 'Remove',
+    kind: 'Kind', kinds: { human: 'Human', being: 'Being' }, beingColor: 'Colour', glyph: 'Glyph',
+    glyphs: { arcs: 'Arcs', rings: 'Rings', curls: 'Curls', dots: 'Dots', squares: 'Squares', mirror: 'Mirror', echo: 'Echo', '': 'None' },
+    whisperSound: 'Whisper sound', whisperGain: 'Whisper level (dB under the narration, −40…0)',
     doctor: n => `🩺 Script doctor: ${n} note${n === 1 ? '' : 's'}`, doctorPass: (i, n) => `Pass ${i} · ${n} note${n === 1 ? '' : 's'}`,
     placeholder: 'Placeholder', placeholderTitle: 'A rough stand-in drawing, not a real picture',
     noPicEngine: 'No picture engine connected — these are placeholders. Connect ComfyUI in Settings → Pictures for real images.', openPictures: '⚙ Picture settings',
@@ -106,6 +111,11 @@ const T = {
     motionLbl: 'الحركة', motionOpts: { 1: '🖼 صورة ثابتة + كاميرا', 2: '🎥 فيديو من الصورة' }, score: n => `★ ${n}/10`, critique: 'ملاحظة الناقد', stClip: 'مقطع الفيديو من الصورة', stDepth: 'خريطة العمق (2.5D)',
     motionOff: 'التحويل من صورة إلى فيديو معطّل في الإعدادات ← الحركة، فتبقى هذه اللقطة صورة ثابتة تتحرك فوقها الكاميرا.',
     lens: 'العدسة', lensPh: 'e.g. 35mm, shallow depth of field', light: 'الإضاءة', lightPh: 'e.g. warm rim light at dusk',
+    whispers: n => `💬 الهمس (${n})`, addWhisper: '＋ أضف همسة', speaker: 'المتكلّم', noSpeaker: '— بلا —', whisperPh: 'ما يهمس به الكائن…',
+    plain: 'عادي', plainTitle: 'سطر عادي بلا مؤثر الهمس', typing: 'فقاعة «يكتب الآن…»', moveUp: 'إلى الأعلى', moveDown: 'إلى الأسفل', remove: 'إزالة',
+    kind: 'النوع', kinds: { human: 'إنسان', being: 'كائن' }, beingColor: 'اللون', glyph: 'العلامة',
+    glyphs: { arcs: 'أقواس', rings: 'حلقات', curls: 'لفائف', dots: 'نقاط', squares: 'مربعات', mirror: 'مرآة', echo: 'صدى', '': 'بلا' },
+    whisperSound: 'صوت الهمس', whisperGain: 'مستوى الهمس (ديسيبل تحت صوت الراوي، من −40 إلى 0)',
     doctor: n => `🩺 طبيب السيناريو: ${arN(n, ['ملاحظة واحدة', 'ملاحظتان', 'ملاحظات', 'ملاحظة'])}`, doctorPass: (i, n) => `الجولة ${i} · ${arN(n, ['ملاحظة واحدة', 'ملاحظتان', 'ملاحظات', 'ملاحظة'])}`,
     placeholder: 'صورة مؤقتة', placeholderTitle: 'رسم تقريبي مؤقت، وليس صورة حقيقية',
     noPicEngine: 'لا يوجد محرك صور متصل، وهذه صور مؤقتة فقط. اربط ComfyUI من الإعدادات ← الصور لتحصل على صور حقيقية.', openPictures: '⚙ إعدادات الصور',
@@ -604,7 +614,8 @@ function shotCardHTML(sh, sc, idx) {
       <button type="button" class="motion-hint small" data-act="motionSettings" ${motion === 2 && !videoOn() ? '' : 'hidden'}>🎥 ${t('motionOff')}</button>
       ${cast.length ? `<div class="chips">${cast.map(c => { const on = sh.cast.includes(c.id); return `<button type="button" class="chip click ${on ? 'gold' : ''}" data-cast="${esc(c.id)}" aria-pressed="${on}" dir="auto">${on ? '●' : '○'} ${esc(c.name)}</button>`; }).join('')}</div>` : ''}
       <textarea data-k="narration" rows="3" dir="auto" placeholder="${esc(t('narrationPh'))}" aria-label="${esc(t('narrationPh'))}">${esc(sh.narration)}</textarea>
-      <details><summary>${t('forArtist')}</summary>
+      ${whispersHTML(sh)}
+      <details class="artist"><summary>${t('forArtist')}</summary>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
           <textarea class="vis" data-k="visual" rows="4" placeholder="${esc(t('visualPh'))}" aria-label="${esc(t('visualPh'))}">${esc(sh.visual)}</textarea>
           <textarea class="vis" data-k="action" rows="3" placeholder="${esc(t('actionPh'))}" aria-label="${esc(t('actionPh'))}">${esc(sh.action)}</textarea>
@@ -630,6 +641,28 @@ function doctorHTML(sp) {
   return `<details class="doctor"><summary class="chip click">${t('doctor', passes.reduce((a, d) => a + count(d), 0))}</summary><div class="doctor-body">${passes.map((d, i) => `
     <div><b>${t('doctorPass', d.pass ?? i + 1, count(d))}</b>${d.verdict ? ` — <span dir="auto">${esc(text(d.verdict))}</span>` : ''}
       ${d.top?.length ? `<ul>${d.top.map(x => `<li dir="auto">${esc(text(x))}</li>`).join('')}</ul>` : ''}</div>`).join('')}</div></details>`;
+}
+
+/** The beings' private lines in a shot (sh.whispers) and the "typing…" bubble (sh.overlay). Timings come from the timeline. */
+const castColor = id => S.sp.cast?.find(c => c.id === id)?.color;
+function whispersHTML(sh) {
+  const list = sh.whispers ?? [], tl = row(sh.id)?.whispers ?? [];
+  const cast = [...(S.sp.cast ?? []).filter(c => c.kind === 'being'), ...(S.sp.cast ?? []).filter(c => c.kind !== 'being')];
+  const btn = (act, title, ch, off) => `<button type="button" class="icon-btn" data-wact="${act}" title="${esc(title)}" aria-label="${esc(title)}" ${off ? 'disabled' : ''}>${ch}</button>`;
+  return `<details class="whispers" ${list.length ? 'open' : ''}><summary>${t('whispers', list.length)}</summary><div class="wh-list">
+    ${list.map((w, i) => `<div class="wh-row" data-wi="${i}">
+      <div class="wh-top">
+        <span class="dot" style="background:${esc(tl[i]?.color ?? castColor(w.speaker) ?? 'var(--muted)')}"></span>
+        <select data-wk="speaker" title="${esc(t('speaker'))}" aria-label="${esc(t('speaker'))}"><option value="">${esc(t('noSpeaker'))}</option>${cast.map(c => `<option value="${esc(c.id)}" ${c.id === w.speaker ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+        <span class="wh-time">${tl[i] ? `${fmt(tl[i].start)}–${fmt(tl[i].end)} s` : ''}</span>
+        <label class="wh-plain" title="${esc(t('plainTitle'))}"><input type="checkbox" data-wk="plain" ${w.plain ? 'checked' : ''}>${t('plain')}</label>
+        <span class="grow"></span>${btn('up', t('moveUp'), '▲', i === 0)}${btn('down', t('moveDown'), '▼', i === list.length - 1)}${btn('del', t('remove'), '✕')}
+      </div>
+      <textarea data-wk="text" rows="2" dir="auto" placeholder="${esc(t('whisperPh'))}" aria-label="${esc(t('whisperPh'))}">${esc(w.text ?? '')}</textarea>
+    </div>`).join('')}
+    <div class="row" style="gap:8px"><button type="button" class="btn sm ghost" data-add-whisper>${t('addWhisper')}</button>
+      <label class="wh-plain"><input type="checkbox" data-k="overlay" ${sh.overlay === 'typing' ? 'checked' : ''}>${t('typing')}</label></div>
+  </div></details>`;
 }
 
 function renderBoard() {
@@ -690,6 +723,14 @@ function newShot(sceneId) {
 
 function onBoardInput(e) {
   const el = e.target;
+  if (el.dataset.wk) {
+    if (e.type === 'input' && (el.tagName === 'SELECT' || el.type === 'checkbox')) return; // handled on "change"
+    const w = findShot(el.closest('.shot').dataset.shot).sh.whispers[el.closest('.wh-row').dataset.wi];
+    if (el.dataset.wk === 'plain') { if (el.checked) w.plain = true; else delete w.plain; } else w[el.dataset.wk] = el.value;
+    if (el.dataset.wk === 'speaker') el.closest('.wh-row').querySelector('.dot').style.background = castColor(el.value) ?? 'var(--muted)';
+    return changed();
+  }
+  if (el.dataset.k === 'overlay') { if (e.type === 'change') { findShot(el.closest('.shot').dataset.shot).sh.overlay = el.checked ? 'typing' : ''; changed(); } return; }
   if (el.matches('[data-scene-title]')) { S.sp.scenes.find(s => s.id === el.closest('.scene').dataset.scene).title = el.value; return changed(); }
   const k = el.dataset.k, card = el.closest('.shot');
   if (!k || !card) return;
@@ -718,6 +759,16 @@ async function onBoardClick(e) {
     const sc = S.sp.scenes.find(s => s.id === el.closest('.scene').dataset.scene);
     const at = sc.shots.findIndex(s => s.kind === 'end');
     sc.shots.splice(at >= 0 ? at : sc.shots.length, 0, newShot(sc.id));
+    return changed(true);
+  }
+  const wact = el.closest('[data-wact],[data-add-whisper]');
+  if (wact) {
+    const { sh } = findShot(el.closest('.shot').dataset.shot), list = (sh.whispers ??= []);
+    if (wact.matches('[data-add-whisper]')) list.push({ speaker: S.sp.cast?.find(c => c.kind === 'being')?.id ?? '', text: '' });
+    else {
+      const i = Number(wact.closest('.wh-row').dataset.wi), j = { up: i - 1, down: i + 1 }[wact.dataset.wact];
+      if (wact.dataset.wact === 'del') list.splice(i, 1); else if (list[j]) [list[i], list[j]] = [list[j], list[i]];
+    }
     return changed(true);
   }
   const chip = el.closest('[data-cast]');
@@ -797,6 +848,7 @@ function refreshLive() {
     const fr = $('.frame', card);
     if (s.thumb && fr.style.backgroundImage !== `url("${s.thumb}")`) { fr.style.backgroundImage = `url('${s.thumb}')`; $('.ph', fr)?.remove(); if (!$('.play', fr)) fr.insertAdjacentHTML('afterbegin', '<div class="play" aria-hidden="true">▶</div>'); }
     $('.badges', card).innerHTML = frameBadgesHTML(id, sh.kind);
+    $$('.wh-row', card).forEach((wr, i) => { const tw = r?.whispers?.[i]; $('.wh-time', wr).textContent = tw ? `${fmt(tw.start)}–${fmt(tw.end)} s` : ''; });
     for (const [cls, v] of [['.prompt-line', s.prompt], ['.critique-line', s.critique]]) {
       const el = $(cls, card);
       if (el) { el.hidden = !v; $('span', el).textContent = v ?? ''; }
@@ -833,6 +885,11 @@ function renderCastTab() {
         <div class="row" style="flex-wrap:nowrap"><input type="text" data-c="${i}" data-ck="name" dir="auto" value="${esc(c.name)}" aria-label="${esc(t('characters'))}" style="font-weight:800;flex:1;min-width:0"><span class="chip" dir="ltr">${esc(c.id)}</span></div>
         <label class="f small">${t('lookLbl')}<textarea data-c="${i}" data-ck="look" rows="4" dir="ltr" style="text-align:left">${esc(c.look)}</textarea></label>
         <label class="f small">${t('personality')}<input type="text" data-c="${i}" data-ck="personality" dir="auto" value="${esc(c.personality)}"></label>
+        <div class="row cast-kind">
+          <label class="f small">${t('kind')}<select data-c="${i}" data-ck="kind">${opts(['human', 'being'], c.kind === 'being' ? 'being' : 'human', t('kinds'))}</select></label>
+          ${c.kind === 'being' ? `<label class="f small">${t('beingColor')}<input type="color" data-c="${i}" data-ck="color" value="${esc(/^#[0-9a-f]{6}$/i.test(c.color ?? '') ? c.color : '#4fd1e8')}"></label>
+          <label class="f small">${t('glyph')}<select data-c="${i}" data-ck="glyph">${opts(['arcs', 'rings', 'curls', 'dots', 'squares', 'mirror', 'echo', ''], c.glyph ?? '', t('glyphs'))}</select></label>` : ''}
+        </div>
       </div>`).join('') || `<div class="muted">${t('noCast')}</div>`}</div>`;
   tab.addEventListener('input', e => {
     const el = e.target, sp = S.sp; // not the render-time copy: every autosave replaces S.sp with the server's
@@ -841,7 +898,7 @@ function renderCastTab() {
     else if (el.dataset.loc) sp.locations[el.dataset.loc].look = el.value;
     else if (el.dataset.c) sp.cast[el.dataset.c][el.dataset.ck] = el.value;
     else return;
-    changed();
+    changed(el.dataset.ck === 'kind'); // a being gets its colour and glyph fields
   });
   $('#castRedraw').onclick = () => runSteps(['cast'], { force: true, label: t('jobLabels').cast });
 }
@@ -955,6 +1012,7 @@ function startAnimatic(screen, bar, rows, onEnd) {
     screen.append(it.el);
     const v = p.assets.voice?.[r.id];
     if (r.voiceDur && v?.file) { it.audio = new Audio(fileUrl(v.file)); it.audio.preload = 'auto'; }
+    it.whispers = (r.whispers ?? []).filter(w => w.file).map(w => ({ at: r.start + (Number(w.start) || 0), audio: Object.assign(new Audio(fileUrl(w.file)), { preload: 'auto' }), played: false }));
   };
   ctl.onMsg = e => {
     const it = items.find(x => x.el?.contentWindow && x.el.contentWindow === e.source);
@@ -974,6 +1032,7 @@ function startAnimatic(screen, bar, rows, onEnd) {
         if (it.ready && !it.played && it.el.contentWindow) play(it);
       }
       if (it.audio && !it.spoke && now >= r.start + r.voiceStart) { it.spoke = true; it.audio.play().catch(() => {}); }
+      for (const w of it.whispers ?? []) if (!w.played && now >= w.at) { w.played = true; w.audio.play().catch(() => {}); }
       if (it.el && now > r.start + r.D + 0.2 && it.i < items.length - 1) { it.el.remove(); it.el = null; it.done = true; }
       const seg = segs[it.i];
       if (seg) seg.className = now >= r.start + r.D - r.T ? 'past' : now >= r.start ? 'on' : '';
@@ -988,7 +1047,7 @@ function stopAnimatic() {
   const c = S.ani; if (!c) return;
   cancelAnimationFrame(c.raf);
   removeEventListener('message', c.onMsg);
-  for (const it of c.items) { it.audio?.pause(); it.el?.remove(); }
+  for (const it of c.items) { it.audio?.pause(); for (const w of it.whispers ?? []) w.audio.pause(); it.el?.remove(); }
   S.ani = null;
 }
 
@@ -1002,7 +1061,7 @@ const numOf = (el, def) => { const v = el.value.trim() === '' ? NaN : Number(el.
 async function openSettings(section) {
   let s;
   try { s = S.settings = await api('settings'); } catch (e) { return fail(e); }
-  const d = $('#settings'), e = { doctorPasses: 2, ...s.engine }, im = { ...IMAGE_DEF, ...s.image }, vid = { ...VIDEO_DEF, ...s.video };
+  const d = $('#settings'), e = { doctorPasses: 2, ...s.engine }, im = { ...IMAGE_DEF, ...s.image }, vid = { ...VIDEO_DEF, ...s.video }, wh = { enabled: true, gain: -12, ...s.voice.whisper };
   const voiceSel = (lang, cur) => `<select data-voice="${lang}"><option selected>${esc(cur)}</option></select>`;
   const sec = (k, title, body) => `<section class="set-sec" id="set-${k}" aria-labelledby="set-${k}-h"><h3 id="set-${k}-h">${title}</h3>${body}</section>`;
   d.innerHTML = `
@@ -1077,6 +1136,10 @@ async function openSettings(section) {
       ${toggleIn('vDepth', t('depth'), vid.depth)}`)}
 
       ${sec('narrator', t('narrator'), `
+      <div class="grid2">
+        ${toggleIn('sWhisper', t('whisperSound'), wh.enabled)}
+        ${numIn('sWhGain', t('whisperGain'), wh.gain, -40, 0)}
+      </div>
       <div class="grid2">${['ar', 'en', 'fr'].map(l => `<label class="f">${LANGS[l]}${voiceSel(l, s.voice[l])}</label>`).join('')}
         <label class="f">${t('ratePitch')}<div class="row" style="flex-wrap:nowrap"><input type="text" id="sRate" value="${esc(s.voice.rate)}" dir="ltr" aria-label="${esc(t('ratePitch'))} 1"><input type="text" id="sPitch" value="${esc(s.voice.pitch)}" dir="ltr" aria-label="${esc(t('ratePitch'))} 2"></div></label></div>`)}
 
@@ -1090,7 +1153,7 @@ async function openSettings(section) {
   const v = id => $(id, d).value.trim();
   const form = () => ({
     engine: { preset: v('#sPreset'), protocol: v('#sProto'), baseURL: v('#sBase'), model: v('#sModel'), artModel: v('#sArt'), apiKey: v('#sKey'), temperature: Number($('#sTemp', d).value), concurrency: numOf($('#sConc', d), 3), doctorPasses: numOf($('#sDoc', d), 2) },
-    voice: { ...Object.fromEntries($$('[data-voice]', d).map(x => [x.dataset.voice, x.value])), rate: v('#sRate'), pitch: v('#sPitch') },
+    voice: { ...Object.fromEntries($$('[data-voice]', d).map(x => [x.dataset.voice, x.value])), rate: v('#sRate'), pitch: v('#sPitch'), whisper: { enabled: $('#sWhisper', d).checked, gain: numOf($('#sWhGain', d), wh.gain) } },
     render: { quality: v('#sQuality'), fps: Number(v('#sFps')) },
     image: { engine: $('#sPic .on', d).dataset.v, url: v('#iUrl'), checkpoint: v('#iCkpt'), steps: numOf($('#iSteps', d), 6), cfg: numOf($('#iCfg', d), 2),
       sampler: v('#iSampler'), scheduler: v('#iSched'), negative: v('#iNeg'), ipadapter: $('#iIp', d).checked, ipWeight: numOf($('#iIpW', d), 0.7),

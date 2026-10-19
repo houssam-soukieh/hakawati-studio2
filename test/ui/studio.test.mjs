@@ -28,7 +28,9 @@ before(async () => {
   await startServer();
   const s = await api('settings');
   const { hasKey, apiKey, ...engine } = s.engine; // an omitted key keeps the saved one
-  saved = { ui: s.ui, image: s.image, engine, voice: s.voice, render: s.render, ...(s.video ? { video: s.video } : {}) };
+  // POST merges, so keys the tests add are put back to their defaults when they were not there before
+  saved = { ui: s.ui, image: { candidates: 2, critic: true, minScore: 7, maxRounds: 2, upscaler: '', ...s.image }, engine: { doctorPasses: 2, ...engine },
+    voice: { ...s.voice, whisper: s.voice.whisper ?? { enabled: true, gain: -12 } }, render: s.render, ...(s.video ? { video: s.video } : {}) };
   if (s.image.engine === 'comfyui') await api('settings', { image: { engine: 'none' } }); // the mock pipeline paints placeholders
   await launch();
 });
@@ -167,6 +169,8 @@ for (const c of COMBOS) {
         const [a, b] = json.screenplay.scenes.flatMap(sc => sc.shots).filter(x => x.kind === 'shot');
         Object.assign(json.status[a.id], { score: 8, critique: 'Strong light; the fox is too small', video: true, depth: true });
         Object.assign(json.status[b.id], { score: 5, critique: 'الوجه مشوّه' });
+        b.whispers = [{ speaker: '', text: 'هل يسمعنا؟' }]; // a whisper with the timing and colour the timeline gives it
+        json.timeline.shots.find(x => x.id === b.id).whispers = [{ start: 1.2, end: 3.4, color: '#ff00aa' }];
         await r.fulfill({ response: res, json });
       });
       await page.reload();
@@ -178,6 +182,8 @@ for (const c of COMBOS) {
       assert.match(await page.textContent(`.shot[data-shot="${s1}"] .st`), /🎬/);
       assert.match(await page.textContent(`.shot[data-shot="${s1}"] .st`), /◐/);
       assert.equal(await page.textContent(`.shot[data-shot="${s2}"] .critique-line span`), 'الوجه مشوّه');
+      assert.equal((await page.textContent(`.shot[data-shot="${s2}"] .wh-time`)).trim(), '1.2–3.4 s');
+      assert.equal(await page.$eval(`.shot[data-shot="${s2}"] .wh-row .dot`, el => getComputedStyle(el).backgroundColor), 'rgb(255, 0, 170)');
       assert.match(await page.textContent('.doctor summary'), /4/);
       await page.click('.doctor summary');
       assert.equal(await page.$$eval('.doctor-body li', els => els.length), 3);
@@ -207,19 +213,44 @@ for (const c of COMBOS) {
       assert.ok(await page.isHidden(`${card} .motion-hint`));
       await page.selectOption(`${card} select[data-k=motion]`, '2');
       await page.waitForSelector(`${card} .motion-hint:not([hidden])`); // image-to-video is off in Settings
-      await page.click(`${card} details summary`);
+      await page.click(`${card} details.artist > summary`);
       await page.fill(`${card} input[data-k=lens]`, '35mm, shallow depth of field');
       await page.fill(`${card} input[data-k=light]`, 'warm rim light');
       assert.equal(await page.getAttribute(`${card} input[data-k=lens]`, 'dir'), 'ltr');
       await sleep(1100); await saved_(page);
       let sh = findShot(await project(id), first);
       assert.deepEqual([sh.shotType, sh.camera, sh.transition, sh.motion, sh.lens, sh.light], ['close', 'pan-left', 'fade', 2, '35mm, shallow depth of field', 'warm rim light']);
+      // whispers: add two, speaker, text, plain, reorder, remove; the "typing…" bubble
+      const wh = `${card} .whispers`;
+      if (!(await page.$(`${wh}[open]`))) await page.click(`${wh} summary`);
+      await page.click(`${wh} [data-add-whisper]`);
+      await page.waitForSelector(`${wh} .wh-row[data-wi="0"]`);
+      await page.fill(`${wh} .wh-row[data-wi="0"] textarea`, 'first whisper');
+      await page.click(`${wh} [data-add-whisper]`);
+      await page.waitForSelector(`${wh} .wh-row[data-wi="1"]`);
+      await page.fill(`${wh} .wh-row[data-wi="1"] textarea`, 'ثاني همسة');
+      assert.equal(await page.$eval(`${wh} .wh-row[data-wi="1"] textarea`, el => getComputedStyle(el).direction), 'rtl');
+      const castIds = await page.$$eval(`${wh} .wh-row[data-wi="1"] select option`, o => o.map(x => x.value).filter(Boolean));
+      if (castIds.length) await page.selectOption(`${wh} .wh-row[data-wi="1"] select`, castIds[0]);
+      await page.check(`${wh} .wh-row[data-wi="1"] input[data-wk=plain]`);
+      await page.click(`${wh} .wh-row[data-wi="1"] [data-wact=up]`);
+      await page.waitForFunction(sel => document.querySelector(sel)?.value === 'ثاني همسة', `${wh} .wh-row[data-wi="0"] textarea`);
+      await page.click(`${wh} .wh-row[data-wi="1"] [data-wact=del]`);
+      await page.waitForFunction(sel => document.querySelectorAll(sel).length === 1, `${wh} .wh-row`);
+      await page.check(`${wh} input[data-k=overlay]`);
+      await sleep(1100); await saved_(page);
+      sh = findShot(await project(id), first);
+      assert.deepEqual(sh.whispers, [{ speaker: castIds[0] ?? '', text: 'ثاني همسة', plain: true }]);
+      assert.equal(sh.overlay, 'typing');
+      await page.uncheck(`${wh} .wh-row[data-wi="0"] input[data-wk=plain]`);
+      await sleep(1100); await saved_(page);
+      assert.ok(!('plain' in findShot(await project(id), first).whispers[0]), 'unchecking removes the key');
       await shot(page, `${c.tag}-03-card`);
       await page.click(`${card} .motion-hint`);
       await page.waitForSelector('#settings[open] #set-motion');
       await page.keyboard.press('Escape');
       await page.waitForSelector('#settings[open]', { state: 'detached' });
-      await page.click(`${card} details summary`);
+      await page.click(`${card} details.artist > summary`);
       // cast chips toggle
       const chip = `${card} [data-cast]`;
       if (await page.$(chip)) {
@@ -318,6 +349,20 @@ for (const c of COMBOS) {
     });
 
     it('live preview: the animatic chains the player shot by shot with the voices', async () => {
+      // a whisper with its own sound file (what the whisper step writes): copy a voice and point the timeline at it
+      const p0 = await project(id), r0 = p0.timeline.shots.find(r => p0.assets.voice[r.id]);
+      fs.mkdirSync(path.join(ROOT, 'projects', id, 'whispers'), { recursive: true });
+      fs.copyFileSync(path.join(ROOT, 'projects', id, p0.assets.voice[r0.id].file), path.join(ROOT, 'projects', id, 'whispers', 'w-test.mp3'));
+      await page.route(`**/api/projects/${id}`, async r => {
+        if (r.request().method() !== 'GET') return r.continue();
+        const res = await r.fetch(), json = await res.json();
+        json.timeline.shots.find(x => x.id === r0.id).whispers = [{ start: 0.3, end: 1.5, file: 'whispers/w-test.mp3' }];
+        await r.fulfill({ response: res, json });
+      });
+      await page.reload();
+      await page.waitForSelector('#aniBtn');
+      await page.unroute(`**/api/projects/${id}`);
+      const whisperSound = page.waitForRequest(r => r.url().includes('/whispers/w-test.mp3'), { timeout: 20000 });
       await page.evaluate(() => { document.getElementById('main').scrollTop = 0; });
       await page.click('#aniBtn');
       await page.waitForSelector('#modal[open] #mScreen .ov');
@@ -327,6 +372,7 @@ for (const c of COMBOS) {
       await page.waitForSelector('#mScreen iframe[src*="player.html"]');
       await voice;
       await page.waitForSelector('#mBar i.on, #mBar i.past');
+      await whisperSound;
       await sleep(1500);
       await shot(page, `${c.tag}-07-animatic`);
       await page.keyboard.press('Escape');
@@ -366,6 +412,15 @@ for (const c of COMBOS) {
         await page.waitForSelector('#saveState.warn:not([hidden])');
         await saved_(page);
         assert.equal((await project(id)).screenplay.cast[0].personality, 'brave and kind');
+      }
+      if (sp.cast.length) { // a being gets a colour and a glyph
+        await page.selectOption('select[data-c="0"][data-ck=kind]', 'being');
+        await page.waitForSelector('input[data-c="0"][data-ck=color]');
+        await page.fill('input[data-c="0"][data-ck=color]', '#00ffaa');
+        await page.selectOption('select[data-c="0"][data-ck=glyph]', 'rings');
+        await sleep(1100); await saved_(page);
+        const c0 = (await project(id)).screenplay.cast[0];
+        assert.deepEqual([c0.kind, c0.color, c0.glyph], ['being', '#00ffaa', 'rings']);
       }
       if (await page.$('.cast-sheet')) assert.ok(await page.isVisible('.badged .ph-badge'), 'the vector cast sheet is marked as a placeholder');
       await shot(page, `${c.tag}-09-cast`, { full: true });
@@ -436,6 +491,12 @@ for (const c of COMBOS) {
       await page.click('label.toggle:has(#vDepth)');
       await sleep(400);
       await shot(page, `${c.tag}-12-settings-motion`);
+      await page.click('.set-nav [data-sec=narrator]');
+      await page.click('label.toggle:has(#sWhisper)');
+      await page.fill('#sWhGain', '-55');
+      await page.locator('#sWhGain').blur();
+      assert.equal(await page.inputValue('#sWhGain'), '-40', 'the level is clamped to −40…0');
+      const whisperWas = await page.isChecked('#sWhisper');
       await page.fill('#sDoc', '1');
       const req = page.waitForRequest(r => r.url().endsWith('/api/settings') && r.method() === 'POST');
       await page.focus('#sDoc');
@@ -445,6 +506,7 @@ for (const c of COMBOS) {
       assert.deepEqual([body.image.engine, body.image.candidates, body.image.critic, body.image.minScore, body.image.maxRounds, body.image.upscaler], ['comfyui', 4, true, 8, 3, '4x-UltraSharp.pth']);
       assert.deepEqual([body.video.engine, body.video.steps, body.video.seconds, body.video.depth, body.video.unet, body.video.fps], ['wan22', 25, 4, false, 'wan2.2_ti2v_5B_fp16.safetensors', 24]);
       assert.equal(body.engine.doctorPasses, 1);
+      assert.deepEqual(body.voice.whisper, { enabled: whisperWas, gain: -40 });
       assert.equal(body.image.checkpoint, 'RealVisXL_V5.0_Lightning_fp16.safetensors');
       // with a picture engine the banner goes away; with image-to-video on, so does the motion hint
       await gotoTab(page, 'board');
