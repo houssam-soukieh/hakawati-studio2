@@ -318,8 +318,21 @@ function Find-Python {
       $cands += "$env:ProgramFiles\Python$n\python.exe"
     }
   }
+  if ($OnWindows) {
+    # every python.org install registers itself here (PEP 514), whatever folder it went to
+    foreach ($k in 'HKCU:\SOFTWARE\Python\PythonCore', 'HKLM:\SOFTWARE\Python\PythonCore', 'HKLM:\SOFTWARE\WOW6432Node\Python\PythonCore') {
+      foreach ($v in @(Get-ChildItem -Path $k -ErrorAction SilentlyContinue)) {
+        $ip = Get-ItemProperty -Path (Join-Path $v.PSPath 'InstallPath') -ErrorAction SilentlyContinue
+        if ($ip.ExecutablePath) { $cands += $ip.ExecutablePath } elseif ($ip.'(default)') { $cands += (Join-Path $ip.'(default)' 'python.exe') }
+      }
+    }
+    # the py launcher knows the rest
+    if (Get-Command py -ErrorAction SilentlyContinue) {
+      foreach ($l in @(& py -0p 2>$null)) { if ($l -match '([A-Za-z]:\\.+python\.exe)\s*$') { $cands += $Matches[1] } }
+    }
+  }
   $first = Get-Command python -ErrorAction SilentlyContinue
-  foreach ($p in $cands) {
+  foreach ($p in ($cands | Select-Object -Unique)) {
     if (-not (Test-Path -LiteralPath $p)) { continue }
     $v = Test-PyVersion $p
     if ($v) { return @{ exe = $p; ver = $v; onPath = ($first -and $first.Source -eq $p) } }
@@ -431,12 +444,19 @@ function Step-Prereqs {
   # --- Python 3.12 (python.org installer, per user, PATH set)
   $py = Find-Python
   if (-not $py -and -not $DryRun -and $OnWindows) {
+    $p = $null
     $url = 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe'
     $exe = J $Dl 'python-3.12.10-amd64.exe'
     if (Get-Download -Url $url -Dest $exe -MinSize 2e7 -Label 'Python 3.12.10 installer') {
       Say '  installing Python 3.12.10 for this user / تثبيت Python 3.12.10 لهذا المستخدم'
       $p = Start-Process -FilePath (NP $exe) -ArgumentList @('/quiet', 'InstallAllUsers=0', 'PrependPath=1', 'Include_launcher=1', 'InstallLauncherAllUsers=0', 'Include_test=0') -Wait -PassThru
       Add-Log "python installer exit $($p.ExitCode)"
+      Update-SessionPath
+      $py = Find-Python
+    }
+    if (-not $py) { # the quiet installer can refuse (e.g. 1638: another 3.12 build already registered) - winget handles that case
+      Say "  python.org installer did not give a usable Python (exit $(if ($p) { $p.ExitCode } else { "no download" })) - trying winget"
+      [void](Install-Winget 'Python.Python.3.12')
       Update-SessionPath
       $py = Find-Python
     }
