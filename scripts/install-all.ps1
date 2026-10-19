@@ -472,10 +472,15 @@ function Step-Prereqs {
 
   # --- edge-tts
   if ($script:Python) {
-    $pa = @('-m', 'pip', 'install', '-U', '--disable-pip-version-check', 'edge-tts'); if ($Proxy) { $pa += @('--proxy', $Proxy) }
+    # truststore: Python then trusts the Windows certificate store (needed where antivirus or a VPN inspects HTTPS)
+    $pa = @('-m', 'pip', 'install', '-U', '--disable-pip-version-check', 'edge-tts', 'truststore'); if ($Proxy) { $pa += @('--proxy', $Proxy) }
     if ($DryRun) { Dry "$($script:Python) $($pa -join ' ')"; Add-Result 1 'edge-tts' 'dry' 'would install/upgrade' }
     else {
       $code = Invoke-Native $script:Python $pa -Quiet
+      if ($code -ne 0) { # usually CERTIFICATE_VERIFY_FAILED: HTTPS inspected on this PC; pip's own list rejects it, the official PyPI hosts are trusted explicitly
+        Say '  pip failed (if the log shows CERTIFICATE_VERIFY_FAILED, antivirus or a VPN inspects HTTPS) - retrying with the PyPI hosts trusted' 'فشل pip (إن ظهر في السجل CERTIFICATE_VERIFY_FAILED فبرنامج حماية أو VPN يفحص اتصالات HTTPS) - إعادة المحاولة مع الوثوق بخوادم PyPI' 'Yellow'
+        $code = Invoke-Native $script:Python ($pa + @('--trusted-host', 'pypi.org', '--trusted-host', 'files.pythonhosted.org')) -Quiet
+      }
       $v = Get-NativeText $script:Python @('-m', 'pip', 'show', 'edge-tts')
       if ($v -match 'Version:\s*(\S+)') { Add-Result 1 'edge-tts' 'ok' "edge-tts $($Matches[1])" }
       else { Add-Result 1 'edge-tts' 'bad' "pip exit $code" (Retry-Cmd '-Steps 1') }
