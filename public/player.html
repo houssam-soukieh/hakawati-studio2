@@ -34,13 +34,14 @@
   }
   #cap.tall span { font-size: calc(var(--u) * 6.2); }
   /* «الهمس»: the beings' private language — the upper third, never where the narration captions sit */
-  #wsp { position: absolute; left: 8%; right: 8%; top: 6%; text-align: center; pointer-events: none; }
-  #wsp.tall { top: 9%; left: 6%; right: 6%; }
+  /* inside the 10% title-safe margin, on a band of its own: the whisper must read over a bright sky as well as a dark room */
+  #wsp { position: absolute; left: 8%; right: 8%; top: 10%; text-align: center; pointer-events: none; }
+  #wsp.tall { top: 12%; left: 6%; right: 6%; }
   #wsp .w { position: absolute; left: 0; right: 0; top: 0; display: none; }
   #wsp .w::before { content: ''; position: absolute; left: 6%; right: 6%; top: -25%; bottom: -35%; background: radial-gradient(ellipse at center, rgba(2,5,10,.55) 0%, rgba(2,5,10,0) 70%); }
   #wsp .tag { position: relative; font: 600 calc(var(--u) * 2.2)/1.5 Cairo, 'Segoe UI', Tahoma, sans-serif; letter-spacing: .06em; color: var(--c); opacity: .85; text-shadow: 0 0 calc(var(--u) * .8) var(--c), 0 1px 3px rgba(0,0,0,.85); }
   #wsp .line { position: relative; display: inline-block; max-width: 100%; vertical-align: top; }
-  #wsp .txt { display: block; padding: 0 .35em; font: 600 calc(var(--u) * 4.1)/1.6 Cairo, 'Segoe UI', Tahoma, sans-serif; color: var(--c);
+  #wsp .txt { display: block; padding: 0 .45em; border-radius: .35em; background: rgba(4, 7, 12, .52); font: 600 calc(var(--u) * 4.1)/1.6 Cairo, 'Segoe UI', Tahoma, sans-serif; color: var(--c);
     text-shadow: 0 0 calc(var(--u) * .45) var(--c), 0 0 calc(var(--u) * 2) var(--g), 0 2px 5px rgba(0,0,0,.8); }
   #wsp.tall .txt { font-size: calc(var(--u) * 5.6); }
   #wsp .plain .txt { text-shadow: 0 2px 4px rgba(0,0,0,.85); }
