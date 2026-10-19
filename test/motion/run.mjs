@@ -60,7 +60,7 @@ const fake = await startFakeComfy({ port: PORT, dir: path.join(OUT, 'comfy') });
 try {
   // ------------------------------------------------------------ a (optional): the plain mock film still renders
   if (process.argv.includes('--full')) {
-    writeJSON(SETTINGS, { ...readJSON(SETTINGS, {}), engine: DEFAULTS.engine, image: DEFAULTS.image, video: DEFAULTS.video });
+    writeJSON(SETTINGS, { ...readJSON(SETTINGS, {}), engine: DEFAULTS.engine, image: { ...DEFAULTS.image, engine: 'none' }, video: DEFAULTS.video }); // the offline film: placeholders, no ComfyUI
     const id = execFileSync('node', ['make.mjs', 'new', 'docs/test-story.txt', '--length', '30'], { cwd: ROOT }).toString().trim();
     made.push(id);
     const t0 = Date.now();
