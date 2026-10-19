@@ -10,7 +10,7 @@
   Camera moves, subtitles, film grain and the title/end cards are drawn here — never by the model.
   Base layer of a shot, best first: an image-to-video clip (L2, seeked frame by frame), a keyframe with a depth map
   (L1, WebGL 2.5D parallax), a plain keyframe, or the animated SVG alone. The SVG overlay, captions, grain and
-  vignette sit on top of any of them.
+  vignette sit on top of any of them, and so do the beings' whispers («الهمس», bible §6) and the chat "typing…" bubble.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,6 +33,23 @@
     background: rgba(8, 10, 18, .62); text-shadow: 0 2px 6px rgba(0,0,0,.6);
   }
   #cap.tall span { font-size: calc(var(--u) * 6.2); }
+  /* «الهمس»: the beings' private language — the upper third, never where the narration captions sit */
+  #wsp { position: absolute; left: 8%; right: 8%; top: 6%; text-align: center; pointer-events: none; }
+  #wsp.tall { top: 9%; left: 6%; right: 6%; }
+  #wsp .w { position: absolute; left: 0; right: 0; top: 0; display: none; }
+  #wsp .w::before { content: ''; position: absolute; left: 6%; right: 6%; top: -25%; bottom: -35%; background: radial-gradient(ellipse at center, rgba(2,5,10,.55) 0%, rgba(2,5,10,0) 70%); }
+  #wsp .tag { position: relative; font: 600 calc(var(--u) * 2.2)/1.5 Cairo, 'Segoe UI', Tahoma, sans-serif; letter-spacing: .06em; color: var(--c); opacity: .85; text-shadow: 0 0 calc(var(--u) * .8) var(--c), 0 1px 3px rgba(0,0,0,.85); }
+  #wsp .line { position: relative; display: inline-block; max-width: 100%; vertical-align: top; }
+  #wsp .txt { display: block; padding: 0 .35em; font: 600 calc(var(--u) * 4.1)/1.6 Cairo, 'Segoe UI', Tahoma, sans-serif; color: var(--c);
+    text-shadow: 0 0 calc(var(--u) * .45) var(--c), 0 0 calc(var(--u) * 2) var(--g), 0 2px 5px rgba(0,0,0,.8); }
+  #wsp.tall .txt { font-size: calc(var(--u) * 5.6); }
+  #wsp .plain .txt { text-shadow: 0 2px 4px rgba(0,0,0,.85); }
+  #wsp canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+  /* the chat "typing…" indicator: three dots pulsing in a grey bubble (the painted phone shows only its glow) */
+  #typing { position: absolute; left: 50%; top: 56%; display: none; align-items: center; gap: calc(var(--u) * 1.3); padding: calc(var(--u) * 2) calc(var(--u) * 2.9);
+    border-radius: calc(var(--u) * 4); background: #3a3e48; box-shadow: 0 calc(var(--u) * .6) calc(var(--u) * 2.4) rgba(0,0,0,.45); }
+  #typing::after { content: ''; position: absolute; left: calc(var(--u) * .4); bottom: calc(var(--u) * -.5); width: calc(var(--u) * 1.6); height: calc(var(--u) * 1.6); border-radius: 50%; background: #3a3e48; }
+  #typing i { display: block; width: calc(var(--u) * 2); height: calc(var(--u) * 2); border-radius: 50%; background: #fff; }
   #err { position: absolute; inset: 0; display: none; place-items: center; color: #fca5a5; font: 600 18px/1.6 'Segoe UI', sans-serif; padding: 40px; text-align: center; background: #1b0d10; }
 </style>
 </head>
@@ -40,9 +57,11 @@
 <div id="stage">
   <div id="cam"></div>
   <div id="card"></div>
+  <div id="typing"><i></i><i></i><i></i></div>
   <div id="vig"></div>
   <svg id="grain" xmlns="http://www.w3.org/2000/svg"><filter id="gf"><feTurbulence id="gt" type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="1" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#gf)"/></svg>
   <div id="cap"><span></span></div>
+  <div id="wsp"></div>
   <div id="err"></div>
 </div>
 <script>
@@ -324,6 +343,135 @@ void main() {
   }
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
+  // ---------------------------------------------------------------- «الهمس»: the beings' private language (bible §6)
+  // Each line opens with a burst of glyphs in the speaker's colour — dots, ticks, arcs, rings: no alphabet, one
+  // dialect per being — that resolves into the real line. The line stays ONE text node (Arabic letters must join): a
+  // CSS mask sweeps it in from where reading starts, and the glyphs live on a canvas over the part not yet revealed.
+  // All of it is a pure function of t, so a captured frame is exact. Only one line is on screen at a time.
+  const W_BURST = 0.3, W_RESOLVE = 0.55, W_IN = 0.08, W_OUT = 0.3, SOFT = 0.15;
+  let wsp = [];
+  const rtlText = s => /[\u0590-\u08FF]/.test(String(s).match(/[A-Za-z\u00C0-\u024F\u0590-\u08FF]/)?.[0] ?? '');
+  const rnd = (a, b) => { const x = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return x - Math.floor(x); };
+  const hex2 = a => Math.round(clamp(a, 0, 1) * 255).toString(16).padStart(2, '0');
+  const spark = (c, x, y, r) => { c.beginPath(); c.moveTo(x - r, y); c.lineTo(x + r, y); c.moveTo(x, y - r); c.lineTo(x, y + r); c.stroke(); };
+  // (ctx, x, y, size, random 0..1 that changes 20× a second, local time, mark index)
+  const GLYPH = {
+    arcs(c, x, y, s, r, lt, k) { // Orion: soft round dots and short arcs, like a calm heartbeat line
+      const yy = y + Math.sin(lt * 5 + k * 0.8) * s * 0.1;
+      c.beginPath();
+      if (r < 0.45) { c.arc(x, yy, s * 0.11, 0, 7); c.fill(); } else { c.arc(x, yy + s * 0.14, s * 0.26, Math.PI * (1.15 + r * 0.2), Math.PI * (1.85 - r * 0.2)); c.stroke(); }
+    },
+    rings(c, x, y, s, r) { // the Eye: perfect concentric circles and straight ticks, very still
+      c.beginPath();
+      if (r < 0.62) { c.arc(x, y, s * 0.26, 0, 7); if (r < 0.3) { c.moveTo(x + s * 0.11, y); c.arc(x, y, s * 0.11, 0, 7); } } else { c.moveTo(x, y - s * 0.3); c.lineTo(x, y + s * 0.3); }
+      c.stroke();
+    },
+    curls(c, x, y, s, r) { // the Broker: looping curls with tiny sparkles
+      c.beginPath();
+      for (let a = 0; a <= 1.001; a += 0.08) { const g = a * Math.PI * 3.2 + r * 6, rr = s * (0.05 + 0.21 * a); c.lineTo(x + Math.cos(g) * rr, y + Math.sin(g) * rr); }
+      c.stroke();
+      if (r > 0.68) spark(c, x + s * 0.3, y - s * 0.32, s * 0.1);
+    },
+    dots(c, x, y, s, r, lt, k) { // the small ones: tiny bouncing dots, fast and chatty
+      for (let d = 0; d < 2; d++) { c.beginPath(); c.arc(x + (d - 0.5) * s * 0.3, y - Math.abs(Math.sin(lt * 15 + k * 1.3 + d * 2)) * s * 0.35, s * (0.07 + 0.05 * rnd(k, d)), 0, 7); c.fill(); }
+    },
+    squares(c, x, y, s, r, lt, k) { // Zill: glitchy squares that imitate every other being's marks
+      if (r > 0.78) return GLYPH[['arcs', 'rings', 'curls', 'dots'][Math.floor(r * 40) % 4]](c, x, y, s, rnd(k, r), lt, k);
+      const q = s * (0.14 + 0.14 * r);
+      c.fillRect(x - q / 2 + (rnd(k, Math.floor(lt * 30)) - 0.5) * s * 0.3, y - q / 2, q, q);
+    },
+    mirror(c, x, y, s, r) { // al-Mizan: mirror-symmetric pairs of marks
+      const a = s * (0.12 + 0.12 * r);
+      c.beginPath();
+      for (const g of [-1, 1]) { c.moveTo(x + g * s * 0.08, y - a); c.lineTo(x + g * s * 0.24, y + a); }
+      c.stroke();
+    },
+    echo(c, x, y, s, r) { // al-Alf: the same mark repeated with offsets and rainbow fringes
+      const own = c.strokeStyle, ga = c.globalAlpha, rr = s * (0.14 + 0.08 * r);
+      ['#ff6b8b', '#6bffc8', '#6b9bff'].forEach((h, j) => { c.globalAlpha = ga * 0.55; c.strokeStyle = h; c.beginPath(); c.arc(x + (j - 1) * s * 0.08, y + (j - 1) * s * 0.03, rr, 0, 7); c.stroke(); });
+      c.globalAlpha = ga; c.strokeStyle = own; c.beginPath(); c.arc(x, y, rr, 0, 7); c.stroke();
+    },
+  };
+  function buildWhispers() {
+    const root = $('wsp');
+    root.classList.toggle('tall', B.aspect === '9:16');
+    wsp = (B.whispers || []).map((w, i) => {
+      const box = document.createElement('div'), tag = document.createElement('div'), line = document.createElement('div'), txt = document.createElement('div'), cv = document.createElement('canvas');
+      const color = /^#[0-9a-f]{6}$/i.test(w.color || '') ? w.color : '#d6dde8';
+      box.className = `w${w.plain ? ' plain' : ''}`;
+      box.style.setProperty('--c', color); box.style.setProperty('--g', `${color}99`);
+      tag.className = 'tag'; tag.textContent = w.plain ? '' : w.name || '';
+      line.className = 'line'; txt.className = 'txt';
+      txt.dir = rtlText(w.text) ? 'rtl' : 'ltr';
+      txt.textContent = w.text; // one text node: never split letters into spans, Arabic would lose its joining
+      line.append(txt, cv); box.append(tag, line); root.appendChild(box);
+      return { w, i, color, box, txt, cv, ctx: cv.getContext('2d'), rows: [], fs: 16, W: 1, H: 1 };
+    });
+    layoutWhispers();
+  }
+  // where the glyphs go: the text's own line boxes (measured once the fonts are in, and again on resize)
+  function layoutWhispers() {
+    const dpr = devicePixelRatio || 1;
+    for (const e of wsp) {
+      const was = e.box.style.display;
+      e.box.style.visibility = 'hidden'; e.box.style.display = 'block';
+      const lb = e.txt.getBoundingClientRect(), r = document.createRange();
+      r.selectNodeContents(e.txt);
+      e.rows = [...r.getClientRects()].map(q => ({ x: q.left - lb.left, y: q.top - lb.top, w: q.width, h: q.height })).filter(q => q.w > 1);
+      e.fs = parseFloat(getComputedStyle(e.txt).fontSize) || 16;
+      e.W = Math.max(1, lb.width); e.H = Math.max(1, lb.height);
+      e.cv.width = Math.max(2, Math.round(e.W * dpr)); e.cv.height = Math.max(2, Math.round(e.H * dpr));
+      e.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      e.box.style.display = was; e.box.style.visibility = '';
+    }
+  }
+  /** Glyph noise over the part of the line the reveal front has not reached yet (front: px from where reading starts). */
+  function drawGlyphs(e, lt, front) {
+    const c = e.ctx, s = e.fs * 0.9, step = e.fs * 0.62, rtl = e.txt.dir === 'rtl', q = Math.floor(lt * 20);
+    c.clearRect(0, 0, e.W, e.H);
+    if (front >= e.W) return;
+    c.fillStyle = c.strokeStyle = c.shadowColor = e.color;
+    c.lineWidth = Math.max(1, e.fs * 0.075); c.lineCap = 'round'; c.shadowBlur = e.fs * 0.35;
+    const draw = GLYPH[e.w.glyph] || GLYPH.dots;
+    let k = 0;
+    for (const row of e.rows) for (let x = row.x + step / 2; x < row.x + row.w; x += step, k++) {
+      const a = clamp(((rtl ? e.W - x : x) - front) / (SOFT * e.W), 0, 1);
+      if (!a) continue;
+      c.globalAlpha = a * (0.55 + 0.45 * rnd(k, q + 7));
+      draw(c, x, row.y + row.h / 2, s, rnd(k + e.i * 101, q), lt, k);
+    }
+    c.globalAlpha = 1;
+  }
+  function seekWhispers(t) {
+    let on = null;
+    for (const e of wsp) if (t >= e.w.start && t <= e.w.end + W_OUT) on = e; // a later line takes over
+    for (const e of wsp) {
+      if (e !== on) { if (e.box.style.display !== 'none') e.box.style.display = 'none'; continue; }
+      const lt = t - e.w.start;
+      e.box.style.display = 'block';
+      e.box.style.opacity = Math.min(clamp(lt / W_IN, 0, 1), clamp((e.w.end + W_OUT - t) / W_OUT, 0, 1)).toFixed(3);
+      if (e.w.plain) continue; // «لا»: no burst, no glow — the line simply appears
+      const rv = easeOut(clamp((lt - W_BURST) / W_RESOLVE, 0, 1)), front = rv * (1 + SOFT) - SOFT; // fraction of the width
+      const pct = (front * 100).toFixed(2), dir = e.txt.dir === 'rtl' ? 'left' : 'right';
+      const mask = rv >= 1 ? 'none' : `linear-gradient(to ${dir}, #000 ${pct}%, transparent ${(front * 100 + SOFT * 100).toFixed(2)}%)`;
+      e.txt.style.webkitMaskImage = mask; e.txt.style.maskImage = mask;
+      e.box.style.setProperty('--g', e.color + hex2(0.5 + 0.18 * Math.sin(t * 2.2 + e.i))); // the glow breathes
+      drawGlyphs(e, lt, front * e.W);
+    }
+  }
+  /** The chat "typing…" bubble: pops in, three dots pulse in a wave. */
+  function seekTyping(t) {
+    const el = $('typing');
+    if (B.overlay !== 'typing' || B.kind !== 'shot') { el.style.display = 'none'; return; }
+    const a = easeOut(clamp((t - 0.15) / 0.35, 0, 1));
+    el.style.display = 'flex'; el.style.opacity = a.toFixed(3);
+    el.style.transform = `translate(-50%, -50%) scale(${(0.7 + 0.3 * a).toFixed(4)})`;
+    [...el.children].forEach((d, k) => {
+      const v = 0.5 + 0.5 * Math.sin(2 * Math.PI * t * 1.5 - k * 1.1);
+      d.style.opacity = (0.35 + 0.65 * v).toFixed(3); d.style.transform = `translateY(calc(var(--u) * ${(-0.45 * v).toFixed(3)}))`;
+    });
+  }
+
   // ---------------------------------------------------------------- seek: the whole frame is a function of t
   // Returns a promise when the frame is not ready yet (a motion clip still seeking); the renderer awaits it before
   // it takes the screenshot. The live preview never waits.
@@ -345,6 +493,8 @@ void main() {
     if (cap !== lastCap) { span.textContent = cap ? cap.text : ''; lastCap = cap; }
     $('cap').style.opacity = op.toFixed(3);
     $('cap').style.visibility = cap ? 'visible' : 'hidden';
+    seekWhispers(t);
+    seekTyping(t);
     // living grain
     if (B.grain) $('gt').setAttribute('seed', String(Math.floor(t * 12) % 997 + 1));
     return base?.at(t, !live);
@@ -381,14 +531,15 @@ void main() {
     }
     else cardFn = buildCard();
     try { await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 3500))]); } catch { /* offline */ }
+    buildWhispers(); // measured with the real font
     await seek(0); // textures uploaded and the first clip frame decoded before anyone reads __ready
     window.__seek = seek;
-    addEventListener('resize', () => { if (!live) seek(lastT); });
+    addEventListener('resize', () => { layoutWhispers(); if (!live) seek(lastT); });
     window.__info = () => {
       const anims = document.getAnimations();
       const finite = anims.map(a => { const tm = a.effect?.getComputedTiming?.(); return tm && isFinite(tm.endTime) ? { end: tm.endTime / 1000, name: a.animationName || a.id || '' } : null; }).filter(Boolean);
       const smil = svgEl ? svgEl.querySelectorAll('animate,animateTransform,animateMotion,set').length : 0;
-      return { animations: anims.length, smil, finite, elements: svgEl ? svgEl.querySelectorAll('*').length : 0, problems, layer, notes };
+      return { animations: anims.length, smil, finite, elements: svgEl ? svgEl.querySelectorAll('*').length : 0, problems, layer, notes, whispers: wsp.length, overlay: B.overlay || '' };
     };
     window.__ready = true;
     if (mode === 'play') play();
