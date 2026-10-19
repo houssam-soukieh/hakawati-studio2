@@ -15,7 +15,7 @@ const progress = (k, label) => { const pct = Math.round(k * 100); if (pct !== la
 try {
   if (cmd === 'new') {
     const story = fs.readFileSync(a1, 'utf8');
-    const p = createProject({ title: flag('title', ''), story, options: { style: flag('style', 'photoreal'), aspect: flag('aspect', '16:9'), length: Number(flag('length', 60)), language: flag('lang', 'ar') } });
+    const p = createProject({ title: flag('title', ''), story, options: { style: flag('style', 'photoreal'), aspect: flag('aspect', '16:9'), length: Number(flag('length', 60)), language: flag('lang', /[\u0600-\u06FF]/.test(story) ? 'ar' : 'en') } });
     console.log(p.id);
   } else if (cmd === 'run') {
     const which = !a2 || a2.startsWith('--') ? 'all' : a2;
