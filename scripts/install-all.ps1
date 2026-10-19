@@ -304,8 +304,9 @@ function Find-Git {
   return $null
 }
 function Test-PyVersion([string]$exe) {
-  $v = Get-NativeText $exe @('-c', 'import sys; print("%d.%d.%d" % sys.version_info[:3])')
-  if ($v -match '^3\.(\d+)\.\d+$' -and [int]$Matches[1] -ge 9) { return $v }
+  # no double quotes in the code: Windows PowerShell 5.1 strips them from native arguments
+  $v = Get-NativeText $exe @('-c', 'import sys; print(sys.version.split()[0])')
+  if ("$v".Trim() -match '^3\.(\d+)\.\d+' -and [int]$Matches[1] -ge 9) { return "$v".Trim() }
   return $null
 }
 # Returns @{ exe; ver; onPath } for an acceptable CPython 3.9+ (never the Microsoft Store alias).
