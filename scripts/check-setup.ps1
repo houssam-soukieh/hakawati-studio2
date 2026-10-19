@@ -41,7 +41,7 @@ function Invoke-Quiet([string]$exe, [string[]]$argv) {
 # GET a JSON document from ComfyUI without any system proxy, 4 s timeout. Returns $null on failure.
 function Get-Json([string]$url) {
   try {
-    $req = [System.Net.HttpWebRequest]::Create($url)
+    $req = [System.Net.WebRequest]::Create($url)
     $req.Proxy = $null
     $req.Timeout = 4000
     $req.ReadWriteTimeout = 8000
@@ -127,7 +127,7 @@ if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) {
 
 # ------------------------------------------------------------------ Studio
 $listen = $null
-try { $listen = Get-NetTCPConnection -LocalPort $StudioPort -State Listen -ErrorAction Stop | Select-Object -First 1 } catch { }
+try { $listen = Get-NetTCPConnection -LocalPort $StudioPort -State Listen -ErrorAction Stop | Select-Object -First 1 } catch { Write-Verbose 'port free or Get-NetTCPConnection unavailable' }
 if ($listen) {
   $pname = (Get-Process -Id $listen.OwningProcess -ErrorAction SilentlyContinue).ProcessName
   $state = if ($pname -eq 'node') { 'ok' } else { 'warn' }
@@ -229,7 +229,7 @@ try {
   $drive = (Split-Path -Qualifier $ComfyRoot -ErrorAction Stop).TrimEnd(':')
   $free = (Get-PSDrive -Name $drive -ErrorAction Stop).Free
   Add-Row 'Disk' "${drive}: free" $(if ($free -ge 20e9) { 'ok' } else { 'warn' }) (Fmt-Size $free)
-} catch { }
+} catch { Write-Verbose 'free space unknown' }
 
 # ------------------------------------------------------------------ print
 Write-Host ''

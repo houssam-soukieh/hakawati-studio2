@@ -43,7 +43,11 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
   `lib/timeline.mjs` (single clock, captions, SRT), `lib/render.mjs` (seek every animation per frame, CDP capture →
   ffmpeg), `lib/assemble.mjs`, `lib/project.mjs` (`projects/<id>/project.json` + asset ledger).
 - `public/index.html`, `app.js`, `app.css` — Studio; `public/player.html` — the one player (`mode=play|wait|still|capture`).
-- `scripts/start-studio.bat`, `start-comfyui.bat` (`COMFY_ROOT=E:\ComfyUI`, 127.0.0.1:8188), `check-setup.ps1`.
+- `scripts/start-studio.bat`, `start-comfyui.bat` (`COMFY_ROOT=E:\ComfyUI`, 127.0.0.1:8188), `check-setup.ps1`,
+  `install-all.ps1` + `.bat` (one-click, idempotent installer: tools, page file, clone `houssam-soukieh/hakawati-studio2`
+  to `E:\hakawati`, ComfyUI, nodes, 9 models with resume + SHA256, picture settings, check; `-DryRun`, `-Steps`,
+  `-OnlyModels`, `-SkipWan`, `-Proxy`, `-HfEndpoint` with auto-fallback to hf-mirror.com; log `E:\hakawati-install.log`).
+  `install-all.ps1` is UTF-8 **with BOM** (Arabic text; PS 5.1). Tested only on Linux pwsh with stubs so far.
   `.gitattributes` keeps `.bat/.cmd/.ps1` CRLF, everything else LF.
 
 ## Decisions
@@ -59,8 +63,8 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
    shots; the director labels each shot's level. Wan 5B native 1280×704, ≤121 frames @24 fps; on a 3060 Ti expect
    minutes per clip (estimates in the setup doc) → use L2 sparingly.
 5. Never let the image model draw text; titles/subtitles stay in `player.html` (Aref Ruqaa / Cairo).
-6. Licences: Depth Anything V2 Base/Large and 4x-UltraSharp are **non-commercial**; Small DA-V2 is Apache-2.0.
-   Check before any commercial release.
+6. Licences: Depth Anything V2 Base/Large and 4x-UltraSharp are **non-commercial**. The owner confirmed
+   (2026-10-19) production is non-commercial → keep them. If that changes: DA-V2 Small (Apache-2.0), another upscaler.
 
 ## Team branches (built in parallel from 344f336; the lead merges)
 - `agent/critic` — vision critic: best-of-N keyframes judged by a vision model.
@@ -94,8 +98,8 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
 - First production: ~5-minute pilot (opening + "typing…" scene) + a 60-s English teaser.
 
 ## Next steps on the desktop
-1. Follow `docs/SETUP-WINDOWS.md` (tools, `npm install`, ComfyUI + 2 custom nodes + models); run
-   `scripts\check-setup.ps1` until it exits 0.
+1. Run `scripts\install-all.bat` (first real Windows run of the installer — read `E:\hakawati-install.log` if a step
+   fails; manual fallback: `docs/SETUP-WINDOWS.md`); `scripts\check-setup.ps1` must exit 0. Restart if the page file changed.
 2. Settings: CodeCraft key → Test; Pictures → ComfyUI → Test ComfyUI; pick the RealVisXL checkpoint; IP-Adapter on.
 3. First real run: `docs/test-story.txt`, style `photoreal`, 16:9, 60 s. Record actual timings (ComfyUI prints
    `Prompt executed in N seconds`) and replace the estimates in the setup doc.
