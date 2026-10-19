@@ -14,18 +14,35 @@ montage (scenes → shots) → edge-tts narration fixes each shot's length → a
 local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-exact render in Chrome (playwright-core)
 → ffmpeg montage (xfade, voice at its frame, generated score ducked under it, loudnorm −16 LUFS) → MP4 + SRT + thumbnail.
 
-## Status (2026-10-19, end of the laptop session)
-- Pipeline tested end to end with the offline `mock` engine (55 s Arabic film, 7 shots, 2.5 min render, −15.7 LUFS).
-- Written, **not yet run against a real ComfyUI**: picture step (`lib/image.mjs`, `lib/prompts.mjs`), cast portraits,
-  IP-Adapter path. Studio UI (`public/app.js`) written: storyboard editor, animatic, settings, job dock.
-- UI in **English by default, Arabic switch** in the sidebar (saved as `settings.ui.lang`); story language is separate.
-- Setup docs + Windows scripts: `docs/SETUP-WINDOWS.md` / `.ar.md`, `scripts/`, `README.md` (bilingual).
+## Status (2026-10-20, after the cloud team session)
+- **All team branches are merged on `main`** (pushed to github.com/houssam-soukieh/hakawati-studio2). Test suites, all
+  green on main in the cloud sandbox (no GPU, fake ComfyUI/LLM): `node --test test/director/*.test.mjs` (17),
+  `node --test test/whisper/whisper.test.mjs` (7), `node test/whisper/e2e.mjs`, `node test/critic/e2e.mjs`,
+  `node test/e2e-pictures.mjs` (42 checks), `node test/motion/run.mjs --full` (25). `test/ui/studio.test.mjs` (Playwright,
+  EN/AR, desktop/phone) was being fixed against the merged server when the session ended — run it and fix what fails.
+- **Desktop install done (2026-10-20)** by `scripts\install-all.bat`: Node 22, Git, Python 3.12 (python.org) — Anaconda's
+  3.11 also present —, 7-Zip, Chrome, ffmpeg 9.0.2, NVIDIA 616.92 (3060 Ti 8 GB); ComfyUI v0.42.1 at `E:\ComfyUI` with
+  IPAdapter_plus, controlnet_aux, Manager; **all 9 models present, SHA256-verified (39 GB)**; repo at `E:\hakawati`.
+  Page file left system-managed (37.9 GB virtual). check-setup: everything OK **except edge-tts**.
+- **edge-tts on the desktop**: pip failed with `CERTIFICATE_VERIFY_FAILED (self signed certificate in certificate chain)`
+  → something on the PC inspects HTTPS (antivirus web shield or VPN); curl works (Windows store). Fixed in code
+  (3d8716c): `voice.mjs` runs edge-tts through `truststore` (Windows certificate store). On the desktop run, with the
+  SAME `python` the Studio uses (new terminal): `python -m pip install -U edge-tts truststore --trusted-host pypi.org
+  --trusted-host files.pythonhosted.org`, then test a voice step. If SSL still fails: `curl.exe -vI
+  https://speech.platform.bing.com 2>&1 | findstr /i "issuer subject"` names the interceptor.
+- **Text engine on the desktop was still `mock`** (the key was saved but the preset not switched): Settings → Ready-made
+  engine → **CodeCraft (gateway)** → Test (a real reply takes seconds; mock says "The local generator is ready" and
+  always reports Vision ✓) → Save. The owner reported Vision ✓ but that test ran on mock — re-check.
+- **No real picture made yet.** Next: first SDXL pictures (RealVisXL), then the pilot.
+- UI: **English by default, Arabic switch** in the sidebar (`settings.ui.lang`); story language is separate.
+- Server defaults: `image.engine = 'comfyui'`, style `photoreal`. With pictures off, shots are honest "PLACEHOLDER"
+  storyboard cards (the cartoon SVG look was dropped at the owner's request — he wants SDXL-photo quality only).
 
 ## Files
 - `server.mjs` — node:http on 127.0.0.1 only, Host/Origin checks (CSRF / DNS rebinding), Range media, SSE jobs,
   `/api/settings/test`, `/api/image/test`. `make.mjs` — CLI (`new`, `run <id> [all|script|film|steps]`).
-- `lib/pipeline.mjs` — steps `script → voice → cast → art → render → assemble`, incremental via content hashes
-  (`artKey` includes the image settings signature). `lib/jobs.mjs` — one job at a time, SSE log.
+- `lib/pipeline.mjs` — steps `script → voice → cast → art → motion → render → assemble`, incremental via content
+  hashes (`artKey`: image settings, critic settings, in-frame cast/location looks, lens/light/motion). `lib/jobs.mjs` — one job at a time, SSE log.
 - `lib/llm.mjs` — `openai` (`{base}/chat/completions`) or `anthropic` (`{base}/v1/messages`), streamed, JSON asked
   in words + validated (gateways ignore json_schema), usage log `.studio/llm-usage.jsonl`.
 - `lib/settings.mjs` — presets (CodeCraft anthropic/openai, OpenAI, OpenRouter, Gemini, DeepSeek, Anthropic, custom,
@@ -35,7 +52,17 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
   `IPAdapterUnifiedLoader` preset `PLUS (high strength)` + `IPAdapter`; `testImageEngine()` (`/system_stats`,
   checkpoint list, IP-Adapter present). `lib/prompts.mjs` — one SDXL prompt per shot via the text engine (template on
   mock); cast reference-portrait prompt. Image model never draws text.
-- `lib/i18n.mjs` — every log/error string the user reads, en/ar (`t(key, vars)`).
+- `lib/i18n.mjs` — every log/error string the user reads, en/ar (`t(key, vars)`); modules add theirs with `addMessages()`.
+- `lib/critic.mjs` — best-of-N pictures: N candidates per shot (`image.candidates`), a vision call scores them
+  (`image.critic`, `minScore` 7, `maxRounds` 2) and rewrites the prompt when all are weak; one picture when no vision.
+  `llm.mjs`: `askVisionJSON`, `probeVision` (test button reports `vision`).
+- `lib/video.mjs` — depth maps (DepthAnythingV2Preprocessor) and Wan 2.2 TI2V-5B clips (native nodes; <12 GB VRAM →
+  fp8 weights, 832×480, ≤121 frames) for shots with `motion: 2`; VP9-in-MP4 clips; the player seeks them frame-exactly.
+- `lib/whisper.mjs` — «الهمس»: shot `whispers: [{speaker, text, plain?}]`, beings (`kind: 'being'`, `color`, `glyph`)
+  speak in an unintelligible processed whisper (per-being edge-tts voice), subtitled in the player with a glyph decode;
+  `overlay: 'typing'` draws the chat bubble. Director puts «Name: …» lines in `whispers`, never in narration.
+- Director: script doctor loop (`engine.doctorPasses`, default 2), visual bible (canonical `look` strings), per shot
+  `motion` 1|2, `lens`, `light`; Arabic narration stays MSA, painter fields English.
 - `lib/styles.mjs` — styles incl. **`photoreal`** (cinematic live-action look, `image` keywords for SDXL), cameras,
   transitions, shot types, aspects, `IMAGE_SIZES` (1344×768 / 768×1344 / 1024²).
 - `lib/director.mjs` (screenplay prompt + normalizer, title/end cards), `lib/art.mjs` + `lib/svg.mjs` (animated-SVG
@@ -66,14 +93,10 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
 6. Licences: Depth Anything V2 Base/Large and 4x-UltraSharp are **non-commercial**. The owner confirmed
    (2026-10-19) production is non-commercial → keep them. If that changes: DA-V2 Small (Apache-2.0), another upscaler.
 
-## Team branches (built in parallel from 344f336; the lead merges)
-- `agent/critic` — vision critic: best-of-N keyframes judged by a vision model.
-- `agent/director` — script doctor, visual bible, motion level per shot.
-- `agent/comfy` — ComfyUI client verified against the real API + a fake ComfyUI server for tests.
-- `agent/ui` — UI QA + the new settings (motion, critic, …).
-- `agent/motion` — depth parallax (Depth Anything V2) + Wan 2.2 I2V clips; player support for raster/video layers.
-- `agent/pilot` — the pilot screenplay from the approved story.
-- `agent/docs` — README, setup guides, Windows scripts, these notes.
+## Team (cloud session 2026-10-19/20)
+Built in parallel by agents on `agent/*` branches, all merged into `main`: critic, director, comfy (client checked against
+ComfyUI + IPAdapter_plus sources; `test/fake-comfy.mjs`), ui, motion, pilot (`docs/pilot/`: pilot-ar.txt ≈ 5 min,
+teaser-en.txt, bible.md, director-notes.md, README.ar.md), docs (setup guides, installer), whisper.
 
 ## Environment
 - Tools are called by name: `node`, `ffmpeg`, `ffprobe`, `python -m edge_tts` → must be on PATH.
@@ -98,11 +121,14 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
 - First production: ~5-minute pilot (opening + "typing…" scene) + a 60-s English teaser.
 
 ## Next steps on the desktop
-1. Run `scripts\install-all.bat` (first real Windows run of the installer — read `E:\hakawati-install.log` if a step
-   fails; manual fallback: `docs/SETUP-WINDOWS.md`); `scripts\check-setup.ps1` must exit 0. Restart if the page file changed.
-2. Settings: CodeCraft key → Test; Pictures → ComfyUI → Test ComfyUI; pick the RealVisXL checkpoint; IP-Adapter on.
-3. First real run: `docs/test-story.txt`, style `photoreal`, 16:9, 60 s. Record actual timings (ComfyUI prints
-   `Prompt executed in N seconds`) and replace the estimates in the setup doc.
-4. Merge the team branches; re-test with the fake ComfyUI server, then the real one.
-5. Produce the pilot from the approved story.
-6. Consider vendoring the three fonts into `public/` so renders do not depend on Google Fonts.
+1. `git pull` in `E:\hakawati`. Fix edge-tts (see Status) and confirm a voice step works.
+2. Settings: switch the engine to **CodeCraft**, Test (check Vision), Save. Pictures → ComfyUI → Test ComfyUI.
+3. First real pictures: sample story (Studio → New story → ✨ Sample), style photoreal, 16:9, 30 s → write the screenplay
+   → "Paint what is missing". Or CLI: `node make.mjs new docs\test-story.txt --length 30` + `run <id> voice,cast,art`
+   (`cast,art` alone if the voice is still broken). Record seconds per picture (ComfyUI prints `Prompt executed in N s`),
+   VRAM (nvidia-smi), critic scores; show the owner the pictures. Tune parallax strength on real keyframes.
+4. Run `node --test test/ui/studio.test.mjs` and fix what fails against the merged server.
+5. Turn on Wan 2.2 (Settings → Motion) for a few `motion: 2` shots; measure minutes per clip.
+6. Produce the pilot: story `docs/pilot/pilot-ar.txt`, notes `docs/pilot/director-notes.md`, looks from `docs/pilot/bible.md`,
+   photoreal 16:9, length 300. Then the English teaser (9:16).
+7. Vendor the fonts into `public/` so renders don't depend on Google Fonts.
