@@ -53,7 +53,7 @@ Notes:
 
 ```bat
 cd /d E:\
-git clone <repo-url> hakawati
+git clone https://github.com/houssam-soukieh/hakawati-studio2 hakawati
 cd /d E:\hakawati
 npm install
 ```
