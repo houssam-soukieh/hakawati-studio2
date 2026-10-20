@@ -29,6 +29,15 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       (`agent/motion2`) lands next as T3c. Report: are Orion / the Eye / the Broker non-human now (faceless, translucent,
       no skin)? Do Kira's shots differ in framing and light? Critic: shots reviewed, scores, any "not reviewed"? Any
       watchdog lines? Attach 4–6 keyframes + the 4 portraits to the chat for the owner.
+- [ ] **T3c All-shots video for the teaser — overnight** (merged on `main`: every story shot is real Wan 2.2 video).
+      **Start only after the owner approves the T3b keyframes** (he answers you in your chat). `git pull`, restart the
+      Studio and ComfyUI. Settings → Motion: engine **Wan 2.2**, coverage **All shots**, upscale **on** (4x-UltraSharp),
+      max stretch 1.6. Check free disk on E: (≥ 20 GB). Then
+      `node make.mjs run 2026-10-20-souls-of-the-algorithms---teaser motion` (≈ 3–3.5 h; the log prints the estimate and
+      the remaining time after each clip; it resumes if stopped), then `... render,assemble`. Copy the MP4, every clip
+      (`motion\*.mp4`) and the keyframes to `E:\hakawati\out\teaser\`. Report the MEASURED times (Wan s/frame, upscale
+      s/frame, render, total), VRAM/RAM peaks, any failed clip, colour jumps at chained joins, and how the motion looks
+      (people, beings as light, camera). Attach 2–3 short clips or GIFs for the owner if possible.
 - [ ] **T3 English teaser — superseded by T3b/T3c below the lead's decision.** Screenplay, motion flags (6 shots, owner's list), voice,
       cast and art are all done (14 shots + 4 portraits painted), but **did not run motion/render**: the picture
       critic failed on 13/14 shots (`Empty answer from the engine` from CodeCraft) and the unvalidated candidates

@@ -42,7 +42,11 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
   Optional `engine.fallback` (e.g. LM Studio at 127.0.0.1:1234/v1) takes over when CodeCraft gives up.
   Interceptor on the desktop: **Kaspersky** TLS inspection (truststore handles it). Team board: `docs/team/BOARD.md`.
 - **Owner's direction (2026-10-20): every story shot must be real video (Wan 2.2), not a still + camera move** —
-  `agent/motion2` in progress (coverage 'all', clips cover the whole shot by stretch/chaining, upscaled clips).
+  **Done (merged 2026-10-20):** `video.coverage` 'all' (default) | 'marked'; each clip is exactly the shot's length
+  (≤5 s one Wan run; ≤8 s one run stretched ≤1.6× with ffmpeg minterpolate; longer → chained runs from the last frame);
+  upscale in separate 12-frame ComfyUI jobs (4x-UltraSharp → output size ×1.15, lanczos fallback); per-PC measured
+  rates and a time estimate in the log; one failed clip doesn't stop the night; resumes per Wan run. Estimates on the
+  3060 Ti: teaser (14 shots) ≈ 3–3.5 h, pilot (40 shots) ≈ 11–12 h (≈ 7 h with `upscaler: 'lanczos'`).
 - UI: **English by default, Arabic switch** in the sidebar (`settings.ui.lang`); story language is separate.
 - Server defaults: `image.engine = 'comfyui'`, style `photoreal`. With pictures off, shots are honest "PLACEHOLDER"
   storyboard cards (the cartoon SVG look was dropped at the owner's request — he wants SDXL-photo quality only).
