@@ -146,7 +146,7 @@ try {
       if (!ref) { ref = document.createElement('div'); ref.id = 'ref'; document.getElementById('stage').appendChild(ref); }
       ref.dir = 'rtl'; ref.textContent = t;
       Object.assign(ref.style, { position: 'absolute', left: `${txt.getBoundingClientRect().left}px`, top: `${txt.getBoundingClientRect().top}px`, width: `${txt.getBoundingClientRect().width}px`, margin: '0', boxSizing: 'border-box', // the rect includes the padding
-        padding: cs.padding, font: cs.font, color: cs.color, textShadow: cs.textShadow, textAlign: cs.textAlign, letterSpacing: cs.letterSpacing, whiteSpace: cs.whiteSpace });
+        padding: cs.padding, font: cs.font, color: cs.color, textShadow: cs.textShadow, background: cs.background, borderRadius: cs.borderRadius, textAlign: cs.textAlign, letterSpacing: cs.letterSpacing, whiteSpace: cs.whiteSpace });
       txt.style.visibility = 'hidden';
     }, [text, info.rect]).then(() => page.screenshot({ clip: info.rect }));
     const same = await reference(w1.text), apart = await reference([...w1.text].join('‌')); // ZWNJ: the letters cannot join
