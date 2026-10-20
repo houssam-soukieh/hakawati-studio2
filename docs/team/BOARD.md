@@ -21,7 +21,15 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
 5. Never commit `.studio/` (keys) or `projects/`.
 
 ## Tasks for the desktop
-- [ ] **T3 English teaser — BLOCKED, needs a decision.** Screenplay, motion flags (6 shots, owner's list), voice,
+- [ ] **T3b Repaint the teaser with the fixes — DO THIS NOW** (reliability + looks are merged on `main`): `git pull`,
+      **restart the Studio server and ComfyUI**. Settings: concurrency **2**; IP-Adapter weight 0.55 / 'prompt is more
+      important' migrate automatically. Then
+      `node make.mjs run 2026-10-20-souls-of-the-algorithms---teaser voice,cast,art` — portraits and shots repaint by
+      themselves (their keys changed). **No motion/render yet**: the owner wants every shot as real Wan video; that work
+      (`agent/motion2`) lands next as T3c. Report: are Orion / the Eye / the Broker non-human now (faceless, translucent,
+      no skin)? Do Kira's shots differ in framing and light? Critic: shots reviewed, scores, any "not reviewed"? Any
+      watchdog lines? Attach 4–6 keyframes + the 4 portraits to the chat for the owner.
+- [ ] **T3 English teaser — superseded by T3b/T3c below the lead's decision.** Screenplay, motion flags (6 shots, owner's list), voice,
       cast and art are all done (14 shots + 4 portraits painted), but **did not run motion/render**: the picture
       critic failed on 13/14 shots (`Empty answer from the engine` from CodeCraft) and the unvalidated candidates
       that went through for the 3 "being" characters are off-model — Orion/the-Eye/the-Broker painted as
