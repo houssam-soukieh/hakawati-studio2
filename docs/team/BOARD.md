@@ -21,16 +21,14 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
 5. Never commit `.studio/` (keys) or `projects/`.
 
 ## Tasks for the desktop
-- [ ] **T3 English teaser** (owner's request: English only, no Arabic voice; real video, not stills + voice):
-      `docs/pilot/teaser-en.txt` + its notes in `docs/pilot/director-notes.md` + looks from `docs/pilot/bible.md`;
-      photoreal 16:9 60 s; candidates 3, critic on; video.engine wan22, seconds 3; 5–6 shots with `motion: 2`.
-      Steps script → (show the shot list) → voice,cast,art → motion → render,assemble. Copy the MP4, Wan clips,
-      keyframes and portraits to `E:\hakawati\out\teaser\`. Report timings + critic scores.
-      **In progress** — screenplay written and shot list reviewed with the owner (14 shots, ~75 s). Note: the
-      teaser's own section in `director-notes.md` only tags 3 shots `motion: 2` (Broker pouring, Orion's rings on
-      "No", the Eye's filaments over the city), not 5–6 — that 6-shot list is the *pilot*'s (bible §1). Screenplay
-      matches the teaser's documented 3; **owner's answer: 6** (see Open questions).
-      Painting next.
+- [ ] **T3 English teaser — BLOCKED, needs a decision.** Screenplay, motion flags (6 shots, owner's list), voice,
+      cast and art are all done (14 shots + 4 portraits painted), but **did not run motion/render**: the picture
+      critic failed on 13/14 shots (`Empty answer from the engine` from CodeCraft) and the unvalidated candidates
+      that went through for the 3 "being" characters are off-model — Orion/the-Eye/the-Broker painted as
+      realistic humans (Orion with visible bare skin) instead of the bible's faceless/translucent/eyeless
+      design. Full detail, exact errors and 3 options → `docs/team/reports/2026-10-20-t3-english-teaser.md`.
+      Also hit one confirmed 5.5-hour hang (no crash, no timeout) needing a manual kill — see the report's
+      Problem 2, worth a timeout audit in `lib/llm.mjs` / the critic's image path.
 - [ ] **T4 Parallax tuning**: on 2–3 real keyframes compare depth parallax strength (player constants) and report
       what looks natural; the lead tunes the defaults.
 
