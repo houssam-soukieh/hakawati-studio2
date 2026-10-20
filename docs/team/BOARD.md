@@ -21,14 +21,6 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
 5. Never commit `.studio/` (keys) or `projects/`.
 
 ## Tasks for the desktop
-- [ ] **T3b Repaint the teaser with the fixes — DO THIS NOW** (reliability + looks are merged on `main`): `git pull`,
-      **restart the Studio server and ComfyUI**. Settings: concurrency **2**; IP-Adapter weight 0.55 / 'prompt is more
-      important' migrate automatically. Then
-      `node make.mjs run 2026-10-20-souls-of-the-algorithms---teaser voice,cast,art` — portraits and shots repaint by
-      themselves (their keys changed). **No motion/render yet**: the owner wants every shot as real Wan video; that work
-      (`agent/motion2`) lands next as T3c. Report: are Orion / the Eye / the Broker non-human now (faceless, translucent,
-      no skin)? Do Kira's shots differ in framing and light? Critic: shots reviewed, scores, any "not reviewed"? Any
-      watchdog lines? Attach 4–6 keyframes + the 4 portraits to the chat for the owner.
 - [ ] **T3c All-shots video for the teaser — overnight** (merged on `main`: every story shot is real Wan 2.2 video).
       **Start only after the owner approves the T3b keyframes** (he answers you in your chat). `git pull`, restart the
       Studio and ComfyUI. Settings → Motion: engine **Wan 2.2**, coverage **All shots**, upscale **on** (4x-UltraSharp),
@@ -72,6 +64,14 @@ strength and at ½× and 1.5× (player constants), look at them, and report what
       found the margin cap self-cancels AMP/ZOOM scaling on some shots (e.g. pull-outs) — a real lever would need to
       touch the cap formula, not the nominal constants. Static-shot "breathe" needs a clip not stills to judge (gap).
       → `docs/team/reports/2026-10-20-t4-parallax.md`
+- [x] **T3b Repaint with fixes** — big improvement: Broker and the Eye (in its own entrance shot) are fully
+      non-human now, no skin anywhere. Orion is translucent/wireframe with no more nudity but still has a
+      recognizable human face, not fully "faceless" yet. One miss: the Eye is absent from `s4-1` (the
+      city-filaments shot). **Zero critic reviews this run** — not a bug: a live CodeCraft 503 outage sat
+      under the whole run; the new retry/fallback/UNREVIEWED-marking code handled it cleanly (no hang, no
+      crash, confirms the reliability fix works). Recommend a critic-only re-judge pass once CodeCraft is
+      back, plus a plain repaint of `s4-1`. Awaiting the owner's look at the attached images before T3c.
+      → `docs/team/reports/2026-10-20-t3b-repaint.md`
 
 ## Open questions for the owner
 - Commercial use later? (Depth Anything V2 Large and 4x-UltraSharp are non-commercial; production is non-commercial for now.)
