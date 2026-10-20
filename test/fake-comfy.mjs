@@ -4,6 +4,7 @@
 //
 //   node test/fake-comfy.mjs --port 8188 [--host 127.0.0.1] [--delay 1200] [--first-load 0] [--dir <folder>]
 //        [--checkpoints a.safetensors,b.safetensors] [--upscalers 4x-UltraSharp.pth] [--no-ipadapter] [--no-ipadapter-models]
+//        [--weight-types standard,…] (an older IPAdapter node: fewer weight_type choices)
 //   import { startFakeComfy } from './fake-comfy.mjs'  →  { url, port, state, close() }
 //
 // Switches inside a prompt's text: FAIL_OOM → execution_error (torch.OutOfMemoryError) in the KSampler, like a real
@@ -54,7 +55,7 @@ function nodeDefs(cfg) {
   if (cfg.ipadapter) Object.assign(defs, { // cubiq/ComfyUI_IPAdapter_plus IPAdapterPlus.py
     IPAdapterUnifiedLoader: { required: { model: ['MODEL', {}], preset: [IPA_PRESETS, {}] }, optional: { ipadapter: ['IPADAPTER', {}] }, output: ['MODEL', 'IPADAPTER'], output_name: ['model', 'ipadapter'], category: 'ipadapter' },
     IPAdapter: {
-      required: { model: ['MODEL', {}], ipadapter: ['IPADAPTER', {}], image: ['IMAGE', {}], weight: ['FLOAT', { default: 1.0, min: -1, max: 3, step: 0.05 }], start_at: ['FLOAT', { default: 0.0, min: 0.0, max: 1.0, step: 0.001 }], end_at: ['FLOAT', { default: 1.0, min: 0.0, max: 1.0, step: 0.001 }], weight_type: [['standard', 'prompt is more important', 'style transfer'], {}] },
+      required: { model: ['MODEL', {}], ipadapter: ['IPADAPTER', {}], image: ['IMAGE', {}], weight: ['FLOAT', { default: 1.0, min: -1, max: 3, step: 0.05 }], start_at: ['FLOAT', { default: 0.0, min: 0.0, max: 1.0, step: 0.001 }], end_at: ['FLOAT', { default: 1.0, min: 0.0, max: 1.0, step: 0.001 }], weight_type: [cfg.weightTypes, {}] },
       optional: { attn_mask: ['MASK', {}] }, output: ['MODEL'], category: 'ipadapter',
     },
     IPAdapterModelLoader: { required: { ipadapter_file: [cfg.ipadapterFiles, {}] }, output: ['IPADAPTER'], category: 'ipadapter/loaders' },
@@ -244,6 +245,7 @@ async function runNode(fake, ctx, id) {
       const text = inp.positive?.text ?? '';
       await sleepTick(fake, fake.cfg.delay + (/SLOW/.test(text) ? 8000 : 0));
       if (/FAIL_OOM/.test(text)) throw new PyError('torch.OutOfMemoryError', 'Allocation on device \nThis error means you ran out of memory on your GPU.\n\nTIPS: If the workflow worked before you might have accidentally set the batch_size to a large number.');
+      ctx.record.positive = text; ctx.record.negative = inp.negative?.text ?? '';
       out = [{ kind: 'LATENT', w: inp.latent_image.w, h: inp.latent_image.h, text, seed: inp.seed, ref: inp.model?.ref ?? null }]; break;
     }
     case 'VAEDecode': out = [{ kind: 'IMAGE', ...inp.samples }]; break;
@@ -252,7 +254,7 @@ async function runNode(fake, ctx, id) {
       if (!fake.cfg.clipVision.some(f => /(ViT.H.14.*s32B.b79K|ipadapter.*sd15|sd1.?5.*model)\.(bin|safetensors)/i.test(f))) throw new PyError('Exception', 'ClipVision model not found.');
       if (!fake.cfg.ipadapterFiles.some(f => /plus.sdxl.vit.h\.(safetensors|bin)$/i.test(f))) throw new PyError('Exception', 'IPAdapter model not found.');
       out = [inp.model, { kind: 'IPADAPTER', preset: inp.preset }]; break;
-    case 'IPAdapter': out = [{ ...inp.model, ref: inp.image?.file ?? null, weight: inp.weight }]; ctx.record.ipadapter = { image: inp.image?.file, weight: inp.weight, weight_type: inp.weight_type }; break;
+    case 'IPAdapter': out = [{ ...inp.model, ref: inp.image?.file ?? null, weight: inp.weight }]; ctx.record.ipadapter = { image: inp.image?.file, weight: inp.weight, weight_type: inp.weight_type, start_at: inp.start_at, end_at: inp.end_at }; break;
     case 'UpscaleModelLoader': { // the scale is in the file name: 4x-UltraSharp, RealESRGAN_x2plus
       const k = /(?:^|[^a-z0-9])([1-8])x|x([1-8])(?:\D|$)/i.exec(inp.model_name);
       out = [{ kind: 'UPSCALE_MODEL', name: inp.model_name, scale: Number(k?.[1] ?? k?.[2] ?? 4) }]; break;
@@ -464,7 +466,7 @@ const arg = (argv, n, d) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? 
 const list = v => String(v).split(',').map(x => x.trim()).filter(Boolean);
 
 /** Start a fake ComfyUI. Options mirror the CLI flags. `state` exposes what it received (for assertions). */
-export function startFakeComfy({ port = 0, host = '127.0.0.1', delay = 1200, firstLoad = 0, dir, checkpoints, upscalers, ipadapter = true, ipadapterModels = true } = {}) {
+export function startFakeComfy({ port = 0, host = '127.0.0.1', delay = 1200, firstLoad = 0, dir, checkpoints, upscalers, ipadapter = true, ipadapterModels = true, weightTypes = ['standard', 'prompt is more important', 'style transfer'] } = {}) {
   const root = dir ?? fs.mkdtempSync(path.join(os.tmpdir(), 'fake-comfy-'));
   const cfg = {
     delay, firstLoad, ipadapter, input: path.join(root, 'input'), output: path.join(root, 'output'), temp: path.join(root, 'temp'),
@@ -472,6 +474,7 @@ export function startFakeComfy({ port = 0, host = '127.0.0.1', delay = 1200, fir
     upscalers: upscalers ?? ['4x-UltraSharp.pth', 'RealESRGAN_x2plus.pth'],
     clipVision: ipadapterModels ? ['CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors'] : [],
     ipadapterFiles: ipadapterModels ? ['ip-adapter-plus_sdxl_vit-h.safetensors', 'ip-adapter_sdxl_vit-h.safetensors'] : [],
+    weightTypes,
   };
   for (const d of [cfg.input, cfg.output, cfg.temp]) fs.mkdirSync(d, { recursive: true });
   const fake = { cfg, defs: nodeDefs(cfg), queue: [], running: null, history: new Map(), number: 0, interruptFlag: false, loaded: new Set(), closed: false,
@@ -491,7 +494,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const f = await startFakeComfy({
     port: Number(arg(a, 'port', 8188)), host: arg(a, 'host', '127.0.0.1'), delay: Number(arg(a, 'delay', 1200)), firstLoad: Number(arg(a, 'first-load', 0)), dir: arg(a, 'dir'),
     checkpoints: arg(a, 'checkpoints') ? list(arg(a, 'checkpoints')) : undefined, upscalers: arg(a, 'upscalers') !== undefined ? list(arg(a, 'upscalers')) : undefined,
-    ipadapter: !a.includes('--no-ipadapter'), ipadapterModels: !a.includes('--no-ipadapter-models'),
+    ipadapter: !a.includes('--no-ipadapter'), ipadapterModels: !a.includes('--no-ipadapter-models'), weightTypes: arg(a, 'weight-types') ? list(arg(a, 'weight-types')) : undefined,
   });
   console.log(`fake ComfyUI on ${f.url} (files in ${f.dir})`);
   const stop = () => f.close().then(() => process.exit(0));

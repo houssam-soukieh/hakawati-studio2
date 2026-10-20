@@ -1161,7 +1161,7 @@ async function openSettings(section) {
     voice: { ...Object.fromEntries($$('[data-voice]', d).map(x => [x.dataset.voice, x.value])), rate: v('#sRate'), pitch: v('#sPitch'), whisper: { enabled: $('#sWhisper', d).checked, gain: numOf($('#sWhGain', d), wh.gain) } },
     render: { quality: v('#sQuality'), fps: Number(v('#sFps')) },
     image: { engine: $('#sPic .on', d).dataset.v, url: v('#iUrl'), checkpoint: v('#iCkpt'), steps: numOf($('#iSteps', d), 6), cfg: numOf($('#iCfg', d), 2),
-      sampler: v('#iSampler'), scheduler: v('#iSched'), negative: v('#iNeg'), ipadapter: $('#iIp', d).checked, ipWeight: numOf($('#iIpW', d), 0.7),
+      sampler: v('#iSampler'), scheduler: v('#iSched'), negative: v('#iNeg'), ipadapter: $('#iIp', d).checked, ipWeight: numOf($('#iIpW', d), 0.55),
       candidates: numOf($('#iCand', d), IMAGE_DEF.candidates), critic: $('#iCritic', d).checked, minScore: numOf($('#iMin', d), IMAGE_DEF.minScore), maxRounds: numOf($('#iRounds', d), IMAGE_DEF.maxRounds), upscaler: v('#iUp') },
     video: { engine: $('#vEngine .on', d).dataset.v, unet: v('#vUnet') || VIDEO_DEF.unet, clip: v('#vClip') || VIDEO_DEF.clip, vae: v('#vVae') || VIDEO_DEF.vae,
       steps: numOf($('#vSteps', d), VIDEO_DEF.steps), cfg: numOf($('#vCfg', d), VIDEO_DEF.cfg), fps: numOf($('#vFps', d), VIDEO_DEF.fps), seconds: numOf($('#vSec', d), VIDEO_DEF.seconds), depth: $('#vDepth', d).checked },

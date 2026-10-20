@@ -297,6 +297,62 @@ test('picture prompts (offline template) use the same bible pieces', async () =>
   assert.ok(!prompt.includes('[['));
 });
 
+// docs/pilot/bible.md §3–4, word for word
+const KIRA = { id: 'kira', name: 'Kira', kind: 'human', look: '22-year-old woman, olive skin, oval face, tired dark-brown eyes, thick dark eyebrows, long dark-brown hair in a loose messy knot with one silver-white streak at the left temple, faded mustard-yellow work overshirt over a charcoal T-shirt, cheap black wristwatch' };
+const ORION = { id: 'orion', name: 'Orion', kind: 'being', look: 'translucent slender humanoid woven from fine glowing cyan-blue light threads, smooth faceless head with two soft white eye-points, three thin rings of light on each wrist, lower body unravelling into a stream of threads that flows from a phone screen' };
+const WORKSHOP = { id: 'workshop-hidden', name: 'workshop', look: 'the same narrow phone-repair workshop frozen in time, desaturated cold blue-grey, dust motes suspended in mid-air' };
+const beingSp = () => ({ title: 'T', artStyle: 'Photoreal contemporary drama', cast: [KIRA, ORION], locations: [WORKSHOP], scenes: [] });
+const beingShot = (o = {}) => ({ id: 's2-3', kind: 'shot', shotType: 'medium', lens: '50mm', light: 'cold moonlight from the window', camera: 'static', location: WORKSHOP.id, cast: ['orion'], visual: 'Orion bows at the shoulder of the frozen room, his rings tightening.', action: 'The rings tighten.', motion: 1, ...o });
+
+test('picture prompts: beings are marked for the writer and never get human anatomy', async () => {
+  fake.reset(); openai();
+  fake.queue.push({ role: 'prompt', json: { prompt: '[[orion]] bowing slightly at the left third, a beautiful woman with bare skin and a glowing chest, his three wrist rings tightening, low angle, cold stillness' } });
+  const prompt = await prompts.shotImagePrompt({ sp: beingSp(), options: project({ language: 'en' }).options, shot: beingShot(), location: WORKSHOP, log: () => {} });
+  const req = fake.requests[0];
+  assert.match(req.system, /hidden BEINGS/);
+  assert.match(req.user, /\[\[orion\]\] = Orion; BEING — not a person/);
+  assert.ok(prompt.startsWith(ORION.look), prompt);
+  assert.ok(!/woman|skin|chest/.test(prompt.replace(ORION.look, '')), prompt);
+  assert.match(prompt, /wrist rings tightening/);
+  assert.equal(prompts.promptSource(beingSp(), 's2-3'), '', 'per screenplay object');
+  // a human with a being: the human is marked human and goes first when the writer left both looks out
+  fake.reset();
+  fake.queue.push({ role: 'prompt', json: { prompt: 'a young woman bent over the workbench, a glowing figure at her shoulder, warm phone glow on her face, medium shot' } });
+  const shared = await prompts.shotImagePrompt({ sp: beingSp(), options: project({ language: 'en' }).options, shot: beingShot({ cast: ['orion', 'kira'] }), location: WORKSHOP, log: () => {} });
+  assert.match(fake.requests[0].user, /\[\[kira\]\] = Kira; human;/);
+  assert.ok(shared.indexOf(KIRA.look) === 0 && shared.indexOf(ORION.look) > 0, shared);
+  // the negatives and the reference choice for the same frames
+  const sp = beingSp(), base = 'text, logo';
+  assert.match(prompts.shotNegative(sp, beingShot(), base), /^text, logo, human face, human skin, realistic person, woman, man, body, torso, nude, cleavage, two people, duplicate, twins, clone, multiple figures$/);
+  assert.equal(prompts.shotNegative(sp, beingShot({ cast: ['kira', 'orion'] }), base), 'text, logo, nude, cleavage, bare torso, second person, extra person, twins');
+  assert.equal(prompts.refCast(sp, beingShot({ cast: ['orion', 'kira'] }))?.id, 'kira');
+  assert.equal(prompts.refCast(sp, beingShot({ cast: ['orion', 'kira'] }), id => id === 'orion')?.id, 'orion');
+});
+
+test('picture prompts: the engine fails → the offline template (logged, marked); a stopped job still throws', async () => {
+  fake.reset(); openai();
+  const sp = beingSp(), options = project({ language: 'en' }).options, logs = [];
+  fake.queue.push({ role: 'prompt', status: 400, text: 'model overloaded' });
+  const shot = beingShot({ cast: ['kira', 'orion'], visual: 'Kira bends over the workbench at 3 a.m.; Orion watches from her shoulder.' });
+  const prompt = await prompts.shotImagePrompt({ sp, options, shot, location: WORKSHOP, note: 'colder light', log: m => logs.push(m) });
+  assert.equal(fake.requests.length, 1);
+  assert.ok(logs.some(l => /s2-3: the text engine could not write the picture prompt \(HTTP 400.*model overloaded.*offline template/.test(l)), logs.join('\n'));
+  for (const piece of [KIRA.look, ORION.look, WORKSHOP.look, '50mm lens', shot.light, 'medium shot', 'colder light', 'cinematic film still']) assert.ok(prompt.includes(piece), piece);
+  assert.ok(prompt.indexOf(KIRA.look) < prompt.indexOf(ORION.look) && !prompt.includes('[['), prompt);
+  assert.equal(prompts.promptSource(sp, 's2-3'), 'template');
+  // the engine is back: the same shot is written by it again
+  fake.reset();
+  await prompts.shotImagePrompt({ sp, options, shot, location: WORKSHOP, log: () => {} });
+  assert.equal(prompts.promptSource(sp, 's2-3'), 'engine');
+  // stopped: no fallback, the job's Cancelled comes through
+  const ctl = new AbortController();
+  ctl.abort();
+  await assert.rejects(prompts.shotImagePrompt({ sp, options, shot, location: WORKSHOP, signal: ctl.signal, log: () => {} }), e => e.cancelled === true);
+  settings({ protocol: 'mock' });
+  await prompts.shotImagePrompt({ sp, options, shot, location: WORKSHOP });
+  assert.equal(prompts.promptSource(sp, 's2-3'), 'offline');
+});
+
 test('composePrompt: unplaced looks go first, duplicates and unknown placeholders are dropped', () => {
   const people = [{ id: 'a', look: 'old man, grey beard' }, { id: 'b', look: 'young woman, red coat' }];
   const out = prompts.composePrompt({ text: '[[b]] waves, [[b]] smiles, [[zz]] watches', people, location: { look: 'harbour at dawn' }, shot: { lens: '50mm', light: 'soft dawn light' }, style: 'film still' });
