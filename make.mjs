@@ -5,12 +5,16 @@ import fs from 'node:fs';
 import { createProject } from './lib/project.mjs';
 import { runSteps, STEPS, FILM } from './lib/pipeline.mjs';
 import { closeBrowser } from './lib/render.mjs';
+import { startWatchdog } from './lib/jobs.mjs';
 
 const [cmd, a1, a2] = process.argv.slice(2);
 const flag = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? process.argv[i + 1] : d; };
-const log = m => console.log(m);
+let stage = '';
+// the same watchdog as the Studio's jobs: a silent run says what it is waiting on (it is never stopped)
+const dog = startWatchdog({ log: m => console.log(`[${new Date().toISOString().slice(11, 19)}] ${m}`), stage: () => stage });
+const log = m => { dog.touch(); console.log(m); };
 let lastPct = -1;
-const progress = (k, label) => { const pct = Math.round(k * 100); if (pct !== lastPct && pct % 5 === 0) { lastPct = pct; console.log(`PROGRESS ${pct}% ${label}`); } };
+const progress = (k, label) => { stage = label; const pct = Math.round(k * 100); if (pct !== lastPct && pct % 5 === 0) { lastPct = pct; console.log(`PROGRESS ${pct}% ${label}`); } };
 
 try {
   if (cmd === 'new') {
@@ -28,5 +32,6 @@ try {
   console.error(`❌ ${e.message}`);
   process.exitCode = 1;
 } finally {
+  dog.stop();
   await closeBrowser();
 }
