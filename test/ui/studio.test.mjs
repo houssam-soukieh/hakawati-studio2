@@ -3,7 +3,8 @@
 //
 //   PATH=<dir with an edge-tts shim>:$PATH HAKAWATI_CHROME=/path/to/chromium node --test test/ui/studio.test.mjs
 //
-// HAKAWATI_URL=http://127.0.0.1:4848 reuses a running Studio; otherwise one starts on HAKAWATI_TEST_PORT (4865).
+// HAKAWATI_URL=http://127.0.0.1:4848 reuses a running Studio; otherwise this checkout's server starts on a free port
+// (or HAKAWATI_TEST_PORT).
 // Screenshots land in test/ui/shots/ (git-ignored). The run creates projects through the UI and moves them to
 // projects/_trash at the end; Settings it changes are put back.
 import { describe, it, before, after } from 'node:test';
@@ -11,7 +12,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, BASE, api, setLang, waitJobs, jobSeq, launch, closeBrowser, openPage, shot, noSideScroll, startServer, stopServer, sleep } from './helpers.mjs';
+import { ROOT, BASE, api, setLang, waitJobs, jobSeq, launch, closeBrowser, openPage, shot, noSideScroll, startServer, stopServer, sleep, PROJECTS_DIR } from './helpers.mjs';
 
 const COMBOS = [
   { lang: 'en', vp: 'desktop', style: 'shadow', aspect: '16:9', narration: 'en', film: true },
@@ -244,7 +245,10 @@ for (const c of COMBOS) {
       assert.equal(sh.overlay, 'typing');
       await page.uncheck(`${wh} .wh-row[data-wi="0"] input[data-wk=plain]`);
       await sleep(1100); await saved_(page);
-      assert.ok(!('plain' in findShot(await project(id), first).whispers[0]), 'unchecking removes the key');
+      const pw = await project(id);
+      assert.ok(!('plain' in findShot(pw, first).whispers[0]), 'unchecking removes the key');
+      const tw = pw.timeline.shots.find(r => r.id === first).whispers[0], f1 = v => String(Math.round(v * 10) / 10);
+      assert.equal((await page.textContent(`${wh} .wh-row[data-wi="0"] .wh-time`)).trim(), `${f1(tw.start)}–${f1(tw.end)} s`, 'the row shows the timeline’s timing');
       await shot(page, `${c.tag}-03-card`);
       await page.click(`${card} .motion-hint`);
       await page.waitForSelector('#settings[open] #set-motion');
@@ -343,26 +347,16 @@ for (const c of COMBOS) {
       assert.equal(job.status, 'done');
       const p = await project(id);
       assert.ok(p.assets.art[target].at > (at ?? 0), 'the shot was painted again');
-      assert.ok(fs.readdirSync(path.join(ROOT, 'projects', id, 'art')).some(f => f.startsWith(`${target}.v`)), 'the previous picture is kept');
+      assert.ok(fs.readdirSync(path.join(PROJECTS_DIR, id, 'art')).some(f => f.startsWith(`${target}.v`)), 'the previous picture is kept');
       await collapseDock(page);
       clean(page);
     });
 
     it('live preview: the animatic chains the player shot by shot with the voices', async () => {
-      // a whisper with its own sound file (what the whisper step writes): copy a voice and point the timeline at it
-      const p0 = await project(id), r0 = p0.timeline.shots.find(r => p0.assets.voice[r.id]);
-      fs.mkdirSync(path.join(ROOT, 'projects', id, 'whispers'), { recursive: true });
-      fs.copyFileSync(path.join(ROOT, 'projects', id, p0.assets.voice[r0.id].file), path.join(ROOT, 'projects', id, 'whispers', 'w-test.mp3'));
-      await page.route(`**/api/projects/${id}`, async r => {
-        if (r.request().method() !== 'GET') return r.continue();
-        const res = await r.fetch(), json = await res.json();
-        json.timeline.shots.find(x => x.id === r0.id).whispers = [{ start: 0.3, end: 1.5, file: 'whispers/w-test.mp3' }];
-        await r.fulfill({ response: res, json });
-      });
-      await page.reload();
-      await page.waitForSelector('#aniBtn');
-      await page.unroute(`**/api/projects/${id}`);
-      const whisperSound = page.waitForRequest(r => r.url().includes('/whispers/w-test.mp3'), { timeout: 20000 });
+      // the voice step made a sound clip for each whisper; the timeline places it, the animatic plays it
+      const wfile = (await project(id)).timeline.shots.flatMap(r => r.whispers ?? []).find(w => w.file)?.file;
+      assert.ok(wfile, 'the whispers written in the storyboard have their sound clips');
+      const whisperSound = page.waitForRequest(r => r.url().endsWith(`/${wfile}`), { timeout: 30000 });
       await page.evaluate(() => { document.getElementById('main').scrollTop = 0; });
       await page.click('#aniBtn');
       await page.waitForSelector('#modal[open] #mScreen .ov');
@@ -450,13 +444,15 @@ for (const c of COMBOS) {
       assert.equal(await page.inputValue('#sBase'), 'https://api.openai.com/v1');
       await page.selectOption('#sPreset', 'mock');
       assert.equal(await page.inputValue('#sProto'), 'mock');
-      await page.click('#sTest');
+      await page.click('#sTest'); // the offline engine reports that it can "see" (the critic works offline too)
       await page.waitForFunction(() => /✓ mock/.test(document.getElementById('sTestOut').textContent));
-      assert.ok(await page.isHidden('#sVision'), 'no vision line when the engine does not report it');
-      for (const vision of [true, false]) {
-        await page.route('**/api/settings/test', r => r.fulfill({ json: { ok: true, model: 'vision-model', reply: 'ready', vision, models: [] } }));
+      await page.waitForFunction(() => { const el = document.getElementById('sVision'); return !el.hidden && el.textContent.includes('✓'); });
+      // a real engine that cannot see says why; an engine that does not report vision shows no line
+      for (const [res, want] of [[{ vision: false, visionError: 'asked the colour of a red square, got “blue”' }, /✗.*red square/], [{}, null]]) {
+        await page.route('**/api/settings/test', r => r.fulfill({ json: { ok: true, model: 'vision-model', reply: 'ready', models: [], ...res } }));
         await page.click('#sTest');
-        await page.waitForFunction(v => { const el = document.getElementById('sVision'); return !el.hidden && el.textContent.includes(v ? '✓' : '✗'); }, vision);
+        if (want) await page.waitForFunction(re => { const el = document.getElementById('sVision'); return !el.hidden && new RegExp(re).test(el.textContent); }, want.source);
+        else await page.waitForFunction(() => document.getElementById('sVision').hidden); // the ✗ line of the previous answer goes away
         await page.unroute('**/api/settings/test');
       }
       // pictures: ComfyUI first, the off option says placeholders only
@@ -527,7 +523,8 @@ for (const c of COMBOS) {
       assert.ok(top >= 0 && top < 120, `Settings opens at the Pictures section (${top})`);
       await page.keyboard.press('Escape');
       await page.waitForSelector('#settings[open]', { state: 'detached' });
-      if (saved.video) await api('settings', { video: saved.video });
+      // put back what this test changed, so the next combination starts from the same settings (pictures stay off)
+      await api('settings', { voice: { whisper: saved.voice.whisper }, image: { ...saved.image, engine: 'none' }, engine: saved.engine, ...(saved.video ? { video: saved.video } : {}) });
       clean(page);
     });
 

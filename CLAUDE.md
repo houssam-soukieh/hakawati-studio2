@@ -18,8 +18,9 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
 - **All team branches are merged on `main`** (pushed to github.com/houssam-soukieh/hakawati-studio2). Test suites, all
   green on main in the cloud sandbox (no GPU, fake ComfyUI/LLM): `node --test test/director/*.test.mjs` (17),
   `node --test test/whisper/whisper.test.mjs` (7), `node test/whisper/e2e.mjs`, `node test/critic/e2e.mjs`,
-  `node test/e2e-pictures.mjs` (42 checks), `node test/motion/run.mjs --full` (25). `test/ui/studio.test.mjs` (Playwright,
-  EN/AR, desktop/phone) was being fixed against the merged server when the session ended — run it and fix what fails.
+  `node test/e2e-pictures.mjs` (42 checks), `node test/motion/run.mjs --full` (25), `node --test test/ui/studio.test.mjs`
+  (53, Playwright, EN/AR, desktop/phone). **Every suite runs in a temp folder** (`test/sandbox.mjs`,
+  `HAKAWATI_STUDIO_DIR` / `HAKAWATI_PROJECTS_DIR`): tests never touch the owner's `.studio/settings.json` or projects.
 - **Desktop install done (2026-10-20)** by `scripts\install-all.bat`: Node 22, Git, Python 3.12 (python.org) — Anaconda's
   3.11 also present —, 7-Zip, Chrome, ffmpeg 9.0.2, NVIDIA 616.92 (3060 Ti 8 GB); ComfyUI v0.42.1 at `E:\ComfyUI` with
   IPAdapter_plus, controlnet_aux, Manager; **all 9 models present, SHA256-verified (39 GB)**; repo at `E:\hakawati`.
@@ -127,7 +128,7 @@ teaser-en.txt, bible.md, director-notes.md, README.ar.md), docs (setup guides, i
    → "Paint what is missing". Or CLI: `node make.mjs new docs\test-story.txt --length 30` + `run <id> voice,cast,art`
    (`cast,art` alone if the voice is still broken). Record seconds per picture (ComfyUI prints `Prompt executed in N s`),
    VRAM (nvidia-smi), critic scores; show the owner the pictures. Tune parallax strength on real keyframes.
-4. Run `node --test test/ui/studio.test.mjs` and fix what fails against the merged server.
+4. Before pushing a change, run the suites above (safe on the desktop: they use a temp folder).
 5. Turn on Wan 2.2 (Settings → Motion) for a few `motion: 2` shots; measure minutes per clip.
 6. Produce the pilot: story `docs/pilot/pilot-ar.txt`, notes `docs/pilot/director-notes.md`, looks from `docs/pilot/bible.md`,
    photoreal 16:9, length 300. Then the English teaser (9:16).

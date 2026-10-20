@@ -8,6 +8,7 @@
 //      --anthropic runs it on the Anthropic format (default OpenAI); --film also renders and assembles the MP4;
 //      --keep leaves the test project in projects/.
 //   PATH=<edge-tts shim>:$PATH node test/critic/e2e.mjs [--anthropic] [--film] [--keep]
+import '../sandbox.mjs'; // first: settings and projects in a temp folder, never the owner's
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';

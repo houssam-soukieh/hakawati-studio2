@@ -8,6 +8,7 @@
 //   +  graphs use the verified node names/inputs; missing depth node / ComfyUI down / tainted texture all fall back
 // Optional --full also runs test a (the plain mock film through make.mjs; needs edge-tts or the TTS shim on PATH).
 //   HAKAWATI_CHROME=/path/to/chrome node test/motion/run.mjs [--full] [--keep]
+import '../sandbox.mjs'; // first: settings and projects in a temp folder, never the owner's
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
