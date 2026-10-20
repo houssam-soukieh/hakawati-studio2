@@ -21,20 +21,33 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
 5. Never commit `.studio/` (keys) or `projects/`.
 
 ## Tasks for the desktop
-- [ ] **T1 Narrator voice**: `git pull`; `python -m pip install -U edge-tts truststore --trusted-host pypi.org --trusted-host files.pythonhosted.org`
-      (the Studio's `python`); one English test line with `en-US-AndrewMultilingualNeural`. Report the HTTPS interceptor
-      if SSL still fails (`curl.exe -vI https://speech.platform.bing.com 2>&1 | findstr /i "issuer subject"`).
-- [ ] **T2 Engine**: `.studio\settings.json` text engine = CodeCraft (not mock); Settings → Test shows a real reply and Vision.
 - [ ] **T3 English teaser** (owner's request: English only, no Arabic voice; real video, not stills + voice):
       `docs/pilot/teaser-en.txt` + its notes in `docs/pilot/director-notes.md` + looks from `docs/pilot/bible.md`;
       photoreal 16:9 60 s; candidates 3, critic on; video.engine wan22, seconds 3; 5–6 shots with `motion: 2`.
       Steps script → (show the shot list) → voice,cast,art → motion → render,assemble. Copy the MP4, Wan clips,
       keyframes and portraits to `E:\hakawati\out\teaser\`. Report timings + critic scores.
+      **In progress** — screenplay written and shot list reviewed with the owner (14 shots, ~75 s). Note: the
+      teaser's own section in `director-notes.md` only tags 3 shots `motion: 2` (Broker pouring, Orion's rings on
+      "No", the Eye's filaments over the city), not 5–6 — that 6-shot list is the *pilot*'s (bible §1). Screenplay
+      matches the teaser's documented 3; flagged to the owner, awaiting a call on whether to force the other 3.
+      Painting next.
 - [ ] **T4 Parallax tuning**: on 2–3 real keyframes compare depth parallax strength (player constants) and report
       what looks natural; the lead tunes the defaults.
 
 ## Done
-(nothing yet)
+- [x] **T1 Narrator voice** — edge-tts + truststore confirmed working (OS cert store, not interceptor-specific); full
+      Arabic and English test films rendered. Interceptor: Kaspersky Anti-Virus TLS inspection.
+      → `docs/team/reports/2026-10-20-t1-narrator-voice.md`
+- [x] **T2 Engine** — CodeCraft live (`claude-opus-5.5`, vision: true), critic now active (was silently off under mock).
+      → `docs/team/reports/2026-10-20-t2-engine.md`
 
 ## Open questions for the owner
 - Commercial use later? (Depth Anything V2 Large and 4x-UltraSharp are non-commercial; production is non-commercial for now.)
+- T3 motion count: teaser notes say 3 shots get `motion: 2`, the board task said 5–6 (that's the pilot's list) — which should it be?
+
+## Desktop ⇄ cloud link (blocked)
+Tried `ListAgents`/`SendMessage` to `session_0168VRNgUj8LDA9XreHLWoGi`: `list_sessions` finds no other sessions,
+`send_message` errors "unavailable in unsupervised mode" (this desktop session runs with auto/bypass-permissions,
+which disables interactive-approval tools). `/remote-control` is not in this session's available skill list either.
+Needs a fix from the owner/lead's side (switch this session's permission mode, or set up the link from claude.ai) —
+reports in this file + git are the fallback until then.
