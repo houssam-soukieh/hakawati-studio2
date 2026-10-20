@@ -5,12 +5,17 @@ import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import os from 'node:os';
 import { chromium } from 'playwright-core';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const SHOTS = path.join(ROOT, 'test', 'ui', 'shots');
 export const VIEWPORTS = { desktop: { width: 1440, height: 900 }, phone: { width: 390, height: 844 } };
 export let BASE = process.env.HAKAWATI_URL ?? '';
+// The server this run starts keeps its settings and projects in a temporary folder: the tests change settings, and
+// they must never touch the owner's (engine, key, ComfyUI). Pictures start off so shots are placeholders.
+const SANDBOX = fs.mkdtempSync(path.join(os.tmpdir(), 'hakawati-ui-'));
+export const PROJECTS_DIR = process.env.HAKAWATI_URL ? path.join(ROOT, 'projects') : path.join(SANDBOX, 'projects');
 const freePort = () => new Promise((resolve, reject) => {
   const s = net.createServer().on('error', reject).listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); });
 });
@@ -23,7 +28,10 @@ export async function startServer() {
   const port = Number(process.env.HAKAWATI_TEST_PORT) || await freePort();
   BASE = `http://127.0.0.1:${port}`;
   if (await up()) throw new Error(`port ${port} is already in use (another Studio?): set HAKAWATI_TEST_PORT to a free port or HAKAWATI_URL to reuse it`);
-  server = spawn(process.execPath, ['server.mjs'], { cwd: ROOT, env: { ...process.env, HAKAWATI_PORT: String(port), HAKAWATI_NO_OPEN: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const studio = path.join(SANDBOX, 'studio');
+  fs.mkdirSync(studio, { recursive: true }); fs.mkdirSync(PROJECTS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(studio, 'settings.json'), JSON.stringify({ image: { engine: 'none' } }));
+  server = spawn(process.execPath, ['server.mjs'], { cwd: ROOT, env: { ...process.env, HAKAWATI_PORT: String(port), HAKAWATI_NO_OPEN: '1', HAKAWATI_STUDIO_DIR: studio, HAKAWATI_PROJECTS_DIR: PROJECTS_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '';
   server.stdout.on('data', d => { out = (out + d).slice(-20000); });
   server.stderr.on('data', d => { out = (out + d).slice(-20000); });

@@ -8,6 +8,7 @@
 // 3. Makes the whole film from docs/test-story.txt (photoreal) with `make.mjs` and checks cast portraits, every shot's
 //    picture + thumbnail + clip, that the clips show the picture (not the dark fallback), the final MP4, and that a
 //    second run repaints nothing.
+import './sandbox.mjs'; // first: settings and projects in a temp folder, never the owner's
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -15,9 +16,10 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { startFakeComfy } from './fake-comfy.mjs';
+import { STUDIO, PROJECTS } from '../lib/util.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SETTINGS = path.join(ROOT, '.studio', 'settings.json');
+const SETTINGS = path.join(STUDIO, 'settings.json');
 const t0 = Date.now();
 let failed = 0;
 const ok = (cond, what, extra = '') => { console.log(`${cond ? '✓' : '✗'} ${what}${extra ? ` — ${extra}` : ''}`); if (!cond) failed++; return cond; };
@@ -160,7 +162,7 @@ try {
   const tf = Date.now();
   await make(['run', id, 'all'], 'run');
   const filmSec = Math.round((Date.now() - tf) / 1000);
-  const dir = path.join(ROOT, 'projects', id), p = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'));
+  const dir = path.join(PROJECTS, id), p = JSON.parse(fs.readFileSync(path.join(dir, 'project.json'), 'utf8'));
   const shots = p.screenplay.scenes.flatMap(s => s.shots), story = shots.filter(s => s.kind === 'shot');
   const want = upscaler ? { w: 2208, h: 1242 } : { w: 1344, h: 768 };
 

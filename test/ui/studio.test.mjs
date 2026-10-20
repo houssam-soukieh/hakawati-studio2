@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { ROOT, BASE, api, setLang, waitJobs, jobSeq, launch, closeBrowser, openPage, shot, noSideScroll, startServer, stopServer, sleep } from './helpers.mjs';
+import { ROOT, BASE, api, setLang, waitJobs, jobSeq, launch, closeBrowser, openPage, shot, noSideScroll, startServer, stopServer, sleep, PROJECTS_DIR } from './helpers.mjs';
 
 const COMBOS = [
   { lang: 'en', vp: 'desktop', style: 'shadow', aspect: '16:9', narration: 'en', film: true },
@@ -347,7 +347,7 @@ for (const c of COMBOS) {
       assert.equal(job.status, 'done');
       const p = await project(id);
       assert.ok(p.assets.art[target].at > (at ?? 0), 'the shot was painted again');
-      assert.ok(fs.readdirSync(path.join(ROOT, 'projects', id, 'art')).some(f => f.startsWith(`${target}.v`)), 'the previous picture is kept');
+      assert.ok(fs.readdirSync(path.join(PROJECTS_DIR, id, 'art')).some(f => f.startsWith(`${target}.v`)), 'the previous picture is kept');
       await collapseDock(page);
       clean(page);
     });
