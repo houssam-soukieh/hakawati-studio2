@@ -4,7 +4,8 @@
 //   2. critiquePictures on a dark and a bright picture (both protocols): the bright one wins; offline scores are stable
 //   3. paintBest with an engine that never answers JSON: keeps candidate #0 instead of failing the job
 //   4. a whole project: script (offline director) → voice, cast, art on the fakes: N candidates painted, the critic
-//      sees them (JPEG ≤768 px), repaints under minScore, keeps the best over the rounds, stores the asset fields.
+//      sees them (JPEG: candidates ≤640 px, reference portraits ≤384 px), repaints under minScore, keeps the best over
+//      the rounds, stores the asset fields.
 //      --anthropic runs it on the Anthropic format (default OpenAI); --film also renders and assembles the MP4;
 //      --keep leaves the test project in projects/.
 //   PATH=<edge-tts shim>:$PATH node test/critic/e2e.mjs [--anthropic] [--film] [--keep]
@@ -85,7 +86,7 @@ try {
   }
   const call = (await llmLog()).filter(r => r.kind === 'critic').at(-4);
   assert.deepEqual(call.images.map(i => i.label.split(' ')[0]), ['REFERENCE', 'CANDIDATE', 'CANDIDATE']);
-  assert.ok(call.images.every(i => i.mime === 'image/jpeg' && Math.max(i.w, i.h) <= 768));
+  assert.ok(call.images.every(i => i.mime === 'image/jpeg' && Math.max(i.w, i.h) <= (i.label.startsWith('REFERENCE') ? 384 : 640)));
   ok(`critic call carried ${call.images.map(i => `${i.label.slice(0, 22)} ${i.w}×${i.h} ${i.bytes} B`).join(' | ')}; temperature ${call.temperature}`);
   use('mock');
   const m1 = await critiquePictures({ sp, options, shot, prompt: 'p', candidates: [dark, bright] });
@@ -96,7 +97,7 @@ try {
   use('openai', 'fake-badjson', { candidates: 2 });
   const lines = [];
   const fb = await paintBest({ sp, options, shot, prompt: 'a woman', critic: true, paint: async (pr, k) => (k ? bright : dark), log: m => lines.push(m) });
-  assert.equal(fb.png, dark); assert.equal(fb.score, null); assert.equal(fb.candidates.length, 2);
+  assert.equal(fb.png, dark); assert.equal(fb.score, null); assert.equal(fb.candidates.length, 2); assert.equal(fb.reviewed, false);
   ok(`no JSON after 3 tries → kept candidate #0; log: ${lines.at(-1).trim()}`);
 
   console.log(`4. a whole project on the fakes (${process.argv.includes('--anthropic') ? 'anthropic' : 'openai'} format)`);
@@ -114,7 +115,7 @@ try {
   assert.equal(calls.filter(r => r.kind === 'probe').length, 1, 'one vision probe per job');
   for (const s of shots) {
     const a = p.assets.art[s.id];
-    assert.equal(typeof a.score, 'number'); assert.ok(a.critique); assert.equal(a.rounds, 2); assert.equal(a.candidates.length, 4);
+    assert.equal(typeof a.score, 'number'); assert.ok(a.critique); assert.equal(a.rounds, 2); assert.equal(a.candidates.length, 4); assert.equal(a.reviewed, true);
     assert.ok(a.score >= 7 && a.prompt.includes('bright clean daylight'), `${s.id}: the repaint should win`);
     for (const c of a.candidates) assert.ok(fs.existsSync(fileOf(projectId, c.file)), c.file);
     const win = a.candidates.find(c => c.score === a.score && fs.readFileSync(fileOf(projectId, c.file)).equals(fs.readFileSync(fileOf(projectId, a.image))));
@@ -127,8 +128,8 @@ try {
   assert.ok(critic.every(r => r.protocol === (process.argv.includes('--anthropic') ? 'anthropic' : 'openai') && r.stream));
   const cand = r => r.images.filter(i => i.label.startsWith('CANDIDATE'));
   assert.deepEqual([...new Set(critic.map(r => cand(r).length))].sort(), [2, 3]);
-  assert.ok(critic.every(r => r.images.every(i => i.mime === 'image/jpeg' && i.w === 768 && i.h === 438 || i.label.startsWith('REFERENCE'))));
-  ok(`${critic.length} critic calls (round 1: 2 candidates, round 2: best so far + 2 new = 3), refs per call: ${critic.map(r => r.images.length - cand(r).length).join(',')}; candidates sent as JPEG 768×438`);
+  assert.ok(critic.every(r => r.images.every(i => i.mime === 'image/jpeg' && (i.label.startsWith('REFERENCE') ? Math.max(i.w, i.h) <= 384 : i.w === 640 && i.h === 366))));
+  ok(`${critic.length} critic calls (round 1: 2 candidates, round 2: best so far + 2 new = 3), refs per call: ${critic.map(r => r.images.length - cand(r).length).join(',')}; candidates sent as JPEG 640×366, portraits ≤384 px`);
   assert.equal(painted.filter(x => x.width === 1344).length, shots.length * 4);
   assert.equal(new Set(painted.filter(x => x.width === 1344).map(x => x.seed)).size, shots.length * 4, 'every candidate has its own seed');
   ok(`ComfyUI painted ${painted.length} pictures (${painted.filter(x => x.width === 1024).length} cast portraits), ${painted.filter(x => x.bright).length} from corrected prompts, all seeds distinct`);

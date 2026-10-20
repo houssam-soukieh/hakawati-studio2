@@ -193,7 +193,7 @@ test('HTTP 503 from the gateway is retried (with back-off)', async () => {
   fake.queue.push({ role: 'doctor', status: 503, text: 'upstream overloaded' });
   const { sp, logs } = await write();
   assert.deepEqual(fake.roles(), ['director', 'doctor', 'doctor', 'revise']);
-  assert.ok(logs.some(l => /HTTP 503.*retry 2\/3/.test(l)));
+  assert.ok(logs.some(l => /HTTP 503.*retry 2\/\d/.test(l))); // job calls retry patiently (lib/llm.mjs RETRY)
   assert.equal(storyShots(sp).length, 10);
 });
 
