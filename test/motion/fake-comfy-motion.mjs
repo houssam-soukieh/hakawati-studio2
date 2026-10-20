@@ -3,9 +3,14 @@
 //   EmptyLatentImage graph (SDXL keyframe)  → a smooth random texture (no repeats, so shifts can be measured)
 //   DepthAnythingV2Preprocessor graph       → a vertical gradient: top black (far) → bottom white (near)
 //   Wan22ImageToVideoLatent graph           → `length` frames, each a barcode of its own frame number (8 bars, bit i
-//                                             = bar i, white = 1), so the test can read back which frame is on screen
+//                                             = bar i, white = 1), so the test can read back which frame is on screen;
+//                                             a run that starts from a barcode frame (a chained run) continues its
+//                                             numbering, so a joined chain reads 0, 1, 2… across the seam
+//   ImageUpscaleWithModel graph             → the LoadImage frames (ImageBatch order) scaled to ImageScale's size,
+//                                             saved by SaveWEBM (VP9 .webm) or PreviewImage (temp PNGs)
+// Uploads honour type=temp, and LoadImage resolves "sub/name.png [temp]" like ComfyUI's annotated paths.
 // The full fake for the picture step lives on another branch (test/fake-comfy.mjs); this one only covers motion.
-//   node test/motion/fake-comfy-motion.mjs [--port 8195] [--dir /tmp/x] [--no-depth]
+//   node test/motion/fake-comfy-motion.mjs [--port 8195] [--dir /tmp/x] [--no-depth] [--no-upscaler]
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -20,6 +25,8 @@ const REQUIRED = {
   DepthAnythingV2Preprocessor: ['image'],
   UNETLoader: ['unet_name', 'weight_dtype'], CLIPLoader: ['clip_name', 'type'], VAELoader: ['vae_name'], ModelSamplingSD3: ['model', 'shift'],
   Wan22ImageToVideoLatent: ['vae', 'width', 'height', 'length', 'batch_size'],
+  UpscaleModelLoader: ['model_name'], ImageUpscaleWithModel: ['upscale_model', 'image'], ImageScale: ['image', 'upscale_method', 'width', 'height', 'crop'],
+  ImageBatch: ['image1', 'image2'], SaveWEBM: ['images', 'filename_prefix', 'codec', 'fps', 'crf'], PreviewImage: ['images'],
 };
 const DEPTH_CKPTS = ['depth_anything_v2_vitg.pth', 'depth_anything_v2_vitl.pth', 'depth_anything_v2_vitb.pth', 'depth_anything_v2_vits.pth'];
 const INFO = {
@@ -36,6 +43,26 @@ function sizeOf(file) {
   const r = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', file]);
   const [w, h] = String(r.stdout).trim().split(',').map(Number);
   return { w, h };
+}
+
+/** Where an annotated LoadImage name ("sub/x.png [temp]") lives. */
+function resolveImage(name, dirs) {
+  const m = /^(.*) \[(input|temp|output)\]$/.exec(name);
+  const [rel, type] = m ? [m[1], m[2]] : [name, 'input'];
+  const root = dirs[type], file = path.join(root, rel);
+  return file.startsWith(root) ? file : null;
+}
+/** The frame number a barcode picture shows, or null when it is not a barcode (e.g. a painted keyframe). */
+function barcodeOf(file) {
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-i', file, '-vf', 'scale=64:8:flags=neighbor,format=gray', '-f', 'rawvideo', 'pipe:1']);
+  const px = r.stdout;
+  if (!px || px.length < 512) return null;
+  let n = 0;
+  for (let i = 0; i < 8; i++) {
+    const col = Array.from({ length: 8 }, (_, y) => px[y * 64 + i * 8 + 4]);
+    if (col.every(v => v > 200)) n |= 1 << i; else if (!col.every(v => v < 50)) return null;
+  }
+  return n;
 }
 
 /** Problems with a graph, ComfyUI-style ({ nodeId: { class_type, errors: [{message, details}] } }). */
@@ -56,14 +83,20 @@ function validate(g, opts) {
     if (n.class_type === 'CLIPLoader' && !['wan', 'stable_diffusion', 'sd3'].includes(i.type)) bad(id, 'bad type', i.type);
     if (n.class_type === 'UNETLoader' && !['default', 'fp8_e4m3fn', 'fp8_e4m3fn_fast', 'fp8_e5m2'].includes(i.weight_dtype)) bad(id, 'bad weight_dtype', i.weight_dtype);
     if (n.class_type === 'DepthAnythingV2Preprocessor' && ((i.resolution ?? 512) % 64 || (i.ckpt_name && !DEPTH_CKPTS.includes(i.ckpt_name)))) bad(id, 'bad depth inputs', JSON.stringify(i));
+    if (n.class_type === 'LoadImage' && !(resolveImage(String(i.image), opts.dirs) && fs.existsSync(resolveImage(String(i.image), opts.dirs)))) bad(id, `Invalid image file: ${i.image}`);
+    if (n.class_type === 'UpscaleModelLoader' && !opts.upscalers.includes(i.model_name)) bad(id, 'Value not in list', `model_name: '${i.model_name}' not in ${JSON.stringify(opts.upscalers)}`);
+    if (n.class_type === 'ImageScale' && (!['nearest-exact', 'bilinear', 'area', 'bicubic', 'lanczos'].includes(i.upscale_method) || !['disabled', 'center'].includes(i.crop))) bad(id, 'bad ImageScale inputs', JSON.stringify(i));
+    if (n.class_type === 'SaveWEBM' && !['vp9', 'av1'].includes(i.codec)) bad(id, 'bad codec', i.codec);
   }
   return errs;
 }
 
-export function startFakeComfy({ port = 8195, dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fake-comfy-')), noDepth = false } = {}) {
-  const IN = path.join(dir, 'input'), OUT = path.join(dir, 'output');
-  fs.mkdirSync(IN, { recursive: true }); fs.mkdirSync(OUT, { recursive: true });
-  const history = {}, opts = { noDepth };
+export function startFakeComfy({ port = 8195, dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fake-comfy-')), noDepth = false, upscalers = ['4x-UltraSharp.pth'], noWebm = false } = {}) {
+  const IN = path.join(dir, 'input'), OUT = path.join(dir, 'output'), TMP = path.join(dir, 'temp');
+  for (const d of [IN, OUT, TMP]) fs.mkdirSync(d, { recursive: true });
+  const dirs = { input: IN, output: OUT, temp: TMP };
+  const history = {}, opts = { noDepth, upscalers, dirs };
+  const absent = cls => (noDepth && cls === 'DepthAnythingV2Preprocessor') || (noWebm && cls === 'SaveWEBM');
   let n = 0;
   const save = (prefix, count, make) => { // ComfyUI's naming: <subfolder>/<name>_00001_.png …
     const sub = path.dirname(prefix) === '.' ? '' : path.dirname(prefix), name = path.basename(prefix);
@@ -74,17 +107,36 @@ export function startFakeComfy({ port = 8195, dir = fs.mkdtempSync(path.join(os.
   };
   function runGraph(g) {
     const node = cls => Object.values(g).find(x => x.class_type === cls);
+    const upscale = node('ImageUpscaleWithModel');
+    if (upscale) { // frames (in ImageBatch order) → the size ImageScale asks for → one .webm (SaveWEBM) or temp PNGs (PreviewImage)
+      const frames = link => { const n = g[link[0]]; return n.class_type === 'ImageBatch' ? [...frames(n.inputs.image1), ...frames(n.inputs.image2)] : [resolveImage(n.inputs.image, dirs)]; };
+      const list = frames(upscale.inputs.image), sc = node('ImageScale').inputs, seq = fs.mkdtempSync(path.join(dir, 'seq-'));
+      list.forEach((f, i) => fs.copyFileSync(f, path.join(seq, `${String(i).padStart(5, '0')}.png`)));
+      const vf = `scale=${sc.width}:${sc.height}:force_original_aspect_ratio=increase:flags=lanczos,crop=${sc.width}:${sc.height}`;
+      const [id, webm] = Object.entries(g).find(([, x]) => x.class_type === 'SaveWEBM') ?? [];
+      if (webm) {
+        const prefix = webm.inputs.filename_prefix, sub = path.dirname(prefix) === '.' ? '' : path.dirname(prefix), file = `${path.basename(prefix)}_00001_.webm`;
+        fs.mkdirSync(path.join(OUT, sub), { recursive: true });
+        ff(['-framerate', String(webm.inputs.fps), '-start_number', '0', '-i', path.join(seq, '%05d.png'), '-vf', vf, '-c:v', 'libvpx-vp9', '-crf', String(webm.inputs.crf), '-b:v', '0', '-deadline', 'realtime', '-cpu-used', '8', '-pix_fmt', 'yuv420p', path.join(OUT, sub, file)]);
+        fs.rmSync(seq, { recursive: true, force: true });
+        return { [id]: { images: [{ filename: file, subfolder: sub, type: 'output' }], animated: [true] } };
+      }
+      const [pid] = Object.entries(g).find(([, x]) => x.class_type === 'PreviewImage'), name = `ComfyUI_temp_${Math.random().toString(36).slice(2, 7)}`;
+      ff(['-framerate', '24', '-start_number', '0', '-i', path.join(seq, '%05d.png'), '-vf', vf, '-start_number', '1', path.join(TMP, `${name}_%05d_.png`)]);
+      fs.rmSync(seq, { recursive: true, force: true });
+      return { [pid]: { images: list.map((_, i) => ({ filename: `${name}_${String(i + 1).padStart(5, '0')}_.png`, subfolder: '', type: 'temp' })) } };
+    }
     const saveNode = Object.entries(g).find(([, x]) => x.class_type === 'SaveImage');
     const prefix = saveNode[1].inputs.filename_prefix;
     const wan = node('Wan22ImageToVideoLatent'), depth = node('DepthAnythingV2Preprocessor'), empty = node('EmptyLatentImage');
     let images;
     if (wan) {
       const { width: w, height: h, length } = wan.inputs;
-      const fps = 24;
+      const fps = 24, from = barcodeOf(resolveImage(node('LoadImage').inputs.image, dirs)) ?? 0; // a chained run goes on counting
       images = save(prefix, length, pat => ff(['-f', 'lavfi', '-i', `color=c=gray:s=${w}x${h}:r=${fps}`, '-frames:v', String(length),
-        '-vf', "geq=lum='if(bitand(N\\,pow(2\\,floor(X*8/W)))\\,235\\,16)':cb=128:cr=128", '-start_number', '1', pat]));
+        '-vf', `geq=lum='if(bitand(N+${from}\\,pow(2\\,floor(X*8/W)))\\,235\\,16)':cb=128:cr=128`, '-start_number', '1', pat]));
     } else if (depth) {
-      const src = path.join(IN, node('LoadImage').inputs.image);
+      const src = resolveImage(node('LoadImage').inputs.image, dirs);
       const { w, h } = sizeOf(src), r = depth.inputs.resolution ?? 512, k = r / Math.min(w, h);
       const ew = v => Math.round(v * k / 2) * 2;
       images = save(prefix, 1, pat => ff(['-f', 'lavfi', '-i', `color=c=black:s=${ew(w)}x${ew(h)}`, '-frames:v', '1', '-vf', "format=gray,geq=lum='255*Y/(H-1)'", '-start_number', '1', pat]));
@@ -109,13 +161,15 @@ export function startFakeComfy({ port = 8195, dir = fs.mkdtempSync(path.join(os.
       if (url.pathname === '/system_stats') return json(res, 200, { system: { comfyui_version: 'fake-motion' }, devices: [{ name: 'cuda:0 Fake RTX 3060 Ti', vram_total: 8 * 2 ** 30 }] });
       if (url.pathname.startsWith('/object_info/')) {
         const cls = decodeURIComponent(url.pathname.slice(13));
-        return json(res, 200, REQUIRED[cls] && !(noDepth && cls === 'DepthAnythingV2Preprocessor') ? { [cls]: INFO[cls] ?? { input: { required: {} } } } : {});
+        const info = cls === 'UpscaleModelLoader' ? { input: { required: { model_name: ['COMBO', { options: upscalers }] } } } : INFO[cls];
+        return json(res, 200, REQUIRED[cls] && !absent(cls) ? { [cls]: info ?? { input: { required: {} } } } : {});
       }
       if (url.pathname === '/upload/image' && req.method === 'POST') {
         const fd = await new Request('http://x/', { method: 'POST', headers: req.headers, body: await body(req) }).formData();
-        const f = fd.get('image');
-        fs.writeFileSync(path.join(IN, path.basename(f.name)), Buffer.from(await f.arrayBuffer()));
-        return json(res, 200, { name: path.basename(f.name), subfolder: '', type: 'input' });
+        const f = fd.get('image'), type = ['temp', 'output'].includes(fd.get('type')) ? fd.get('type') : 'input', sub = String(fd.get('subfolder') ?? '').replace(/\.\./g, '');
+        fs.mkdirSync(path.join(dirs[type], sub), { recursive: true });
+        fs.writeFileSync(path.join(dirs[type], sub, path.basename(f.name)), Buffer.from(await f.arrayBuffer()));
+        return json(res, 200, { name: path.basename(f.name), subfolder: sub, type });
       }
       if (url.pathname === '/prompt' && req.method === 'POST') {
         const { prompt: g } = JSON.parse(await body(req));
@@ -132,10 +186,10 @@ export function startFakeComfy({ port = 8195, dir = fs.mkdtempSync(path.join(os.
       }
       if (url.pathname.startsWith('/history/')) { const id = decodeURIComponent(url.pathname.slice(9)); return json(res, 200, history[id] ? { [id]: history[id] } : {}); }
       if (url.pathname === '/view') {
-        const root = url.searchParams.get('type') === 'input' ? IN : OUT;
+        const root = dirs[url.searchParams.get('type')] ?? OUT;
         const file = path.join(root, url.searchParams.get('subfolder') ?? '', path.basename(url.searchParams.get('filename') ?? ''));
         if (!file.startsWith(root) || !fs.existsSync(file)) return json(res, 404, { error: 'not found' });
-        res.writeHead(200, { 'content-type': 'image/png' });
+        res.writeHead(200, { 'content-type': file.endsWith('.webm') ? 'video/webm' : 'image/png' });
         return res.end(fs.readFileSync(file));
       }
       json(res, 404, { error: 'unknown route' });
@@ -146,6 +200,6 @@ export function startFakeComfy({ port = 8195, dir = fs.mkdtempSync(path.join(os.
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
-  const f = await startFakeComfy({ port: Number(arg('port', 8195)), dir: arg('dir') && (fs.mkdirSync(arg('dir'), { recursive: true }), arg('dir')), noDepth: process.argv.includes('--no-depth') });
+  const f = await startFakeComfy({ port: Number(arg('port', 8195)), dir: arg('dir') && (fs.mkdirSync(arg('dir'), { recursive: true }), arg('dir')), noDepth: process.argv.includes('--no-depth'), ...(process.argv.includes('--no-upscaler') && { upscalers: [] }) });
   console.log(`fake ComfyUI (motion) on http://127.0.0.1:${f.port} — files in ${f.dir}`);
 }

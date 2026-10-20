@@ -30,8 +30,8 @@ before(async () => {
   const s = await api('settings');
   const { hasKey, apiKey, ...engine } = s.engine; // an omitted key keeps the saved one
   // POST merges, so keys the tests add are put back to their defaults when they were not there before
-  saved = { ui: s.ui, image: { candidates: 2, critic: true, minScore: 7, maxRounds: 2, upscaler: '', ...s.image }, engine: { doctorPasses: 2, ...engine },
-    voice: { ...s.voice, whisper: s.voice.whisper ?? { enabled: true, gain: -12 } }, render: s.render, ...(s.video ? { video: s.video } : {}) };
+  saved = { ui: s.ui, image: { candidates: 2, critic: true, minScore: 7, maxRounds: 2, upscaler: '', ipWeightType: 'prompt is more important', ...s.image }, engine: { doctorPasses: 2, fallback: null, ...engine },
+    voice: { ...s.voice, whisper: s.voice.whisper ?? { enabled: true, gain: -12 } }, render: s.render, ...(s.video ? { video: { coverage: 'all', upscale: true, upscaler: '', maxStretch: 1.6, ...s.video } } : {}) };
   if (s.image.engine === 'comfyui') await api('settings', { image: { engine: 'none' } }); // the mock pipeline paints placeholders
   await launch();
 });
@@ -169,7 +169,9 @@ for (const c of COMBOS) {
         // and what the critic and the motion step report per shot
         const [a, b] = json.screenplay.scenes.flatMap(sc => sc.shots).filter(x => x.kind === 'shot');
         Object.assign(json.status[a.id], { score: 8, critique: 'Strong light; the fox is too small', video: true, depth: true });
-        Object.assign(json.status[b.id], { score: 5, critique: 'الوجه مشوّه' });
+        Object.assign(json.status[b.id], { score: 5, critique: 'الوجه مشوّه', reviewed: false }); // the critic could not judge it yet
+        json.assets.art ??= {};
+        json.assets.art[b.id] = { ...json.assets.art[b.id], promptSource: 'template' }; // written while the engine was away
         b.whispers = [{ speaker: '', text: 'هل يسمعنا؟' }]; // a whisper with the timing and colour the timeline gives it
         json.timeline.shots.find(x => x.id === b.id).whispers = [{ start: 1.2, end: 3.4, color: '#ff00aa' }];
         await r.fulfill({ response: res, json });
@@ -182,6 +184,14 @@ for (const c of COMBOS) {
       assert.ok(await page.$(`.shot[data-shot="${s1}"] .score.ok`) && await page.$(`.shot[data-shot="${s2}"] .score.low`), 'scores below the threshold stand out');
       assert.match(await page.textContent(`.shot[data-shot="${s1}"] .st`), /🎬/);
       assert.match(await page.textContent(`.shot[data-shot="${s1}"] .st`), /◐/);
+      // what each frame is on screen, told truthfully: s1 has its clip; s2 stays a still (image-to-video is off); cards are stills
+      assert.ok(await page.$(`.shot[data-shot="${s1}"] .badges .vbadge.ready`) && await page.$(`.shot[data-shot="${s2}"] .badges .vbadge.still`) && await page.$('.shot[data-shot="title"] .badges .vbadge.card') && await page.$('.shot[data-shot="end"] .badges .vbadge.card'));
+      if (c.lang === 'en') assert.equal((await page.textContent(`.shot[data-shot="${s1}"] .vbadge`)).trim(), '🎬 video ready');
+      else assert.equal((await page.textContent(`.shot[data-shot="${s1}"] .vbadge`)).trim(), '🎬 الفيديو جاهز');
+      // s2: not reviewed by the critic yet, and its prompt came from the template; s1 has no such notes
+      assert.ok(await page.$(`.shot[data-shot="${s2}"] .flags .flag.warn[data-flag=unreviewed]`) && await page.$(`.shot[data-shot="${s2}"] .flags .flag[data-flag=template]`));
+      assert.ok(!(await page.$(`.shot[data-shot="${s1}"] .flags .flag`)));
+      if (c.lang === 'en') assert.match(await page.textContent(`.shot[data-shot="${s2}"] .flags`), /not reviewed by the critic.*prompt from template/s);
       assert.equal(await page.textContent(`.shot[data-shot="${s2}"] .critique-line span`), 'الوجه مشوّه');
       assert.equal((await page.textContent(`.shot[data-shot="${s2}"] .wh-time`)).trim(), '1.2–3.4 s');
       assert.equal(await page.$eval(`.shot[data-shot="${s2}"] .wh-row .dot`, el => getComputedStyle(el).backgroundColor), 'rgb(255, 0, 170)');
@@ -455,6 +465,25 @@ for (const c of COMBOS) {
         else await page.waitForFunction(() => document.getElementById('sVision').hidden); // the ✗ line of the previous answer goes away
         await page.unroute('**/api/settings/test');
       }
+      // the fallback engine: none, or LM Studio (local address, openai format); the Test shows its own result, even when
+      // the main engine failed
+      await page.selectOption('#fPreset', '');
+      assert.ok(await page.isHidden('#fBox'));
+      await page.selectOption('#fPreset', 'lmstudio');
+      await page.waitForSelector('#fBox:not([hidden])');
+      assert.deepEqual([await page.inputValue('#fBase'), await page.inputValue('#fProto')], ['http://127.0.0.1:1234/v1', 'openai']);
+      await page.fill('#fModel', 'qwen2.5-vl-7b');
+      await page.route('**/api/settings/test', r => r.fulfill({ json: { ok: false, error: 'HTTP 503', fallback: { ok: true, name: 'LM Studio (local)', model: 'qwen2.5-vl-7b', reply: 'Ready', vision: true } } }));
+      await page.click('#sTest');
+      await page.waitForFunction(() => { const el = document.getElementById('sFbOut'); return !el.hidden && /qwen2\.5-vl-7b/.test(el.textContent) && /✓/.test(el.textContent); });
+      assert.match(await page.textContent('#sTestOut'), /✗ HTTP 503/);
+      await page.unroute('**/api/settings/test');
+      // the engine's time limits are tucked away
+      assert.ok(await page.isHidden('#sIdle'));
+      await page.click('#sAdv summary');
+      await page.fill('#sIdle', '120'); await page.fill('#sWatch', '30');
+      await page.$eval('#sAdv', el => el.scrollIntoView({ block: 'start' }));
+      await shot(page, `${c.tag}-10b-settings-fallback`);
       // pictures: ComfyUI first, the off option says placeholders only
       assert.equal(await page.getAttribute('#sPic button:first-child', 'data-v'), 'comfyui');
       await page.click('.set-nav [data-sec=pictures]');
@@ -466,6 +495,8 @@ for (const c of COMBOS) {
       await page.click('label.toggle:has(#iCritic)');
       assert.ok(await page.isEnabled('#iMin'));
       await page.fill('#iMin', '8'); await page.fill('#iRounds', '3'); await page.fill('#iUp', '4x-UltraSharp.pth');
+      assert.equal(await page.inputValue('#iIpType'), 'prompt is more important');
+      await page.selectOption('#iIpType', 'standard');
       await page.click('#iTest'); // no ComfyUI here: a red ✗ line, never a console error
       await page.waitForFunction(() => /✗|✓/.test(document.getElementById('iTestOut').textContent), null, { timeout: 20000 });
       // what a real ComfyUI reports: suggestions, its samplers, the resolved checkpoint, IP-Adapter models missing
@@ -483,6 +514,16 @@ for (const c of COMBOS) {
       await page.click('.set-nav [data-sec=motion]');
       await page.click('#vEngine [data-v=wan22]');
       await page.waitForSelector('#vBox:not([hidden])');
+      // every story shot becomes video by default, enlarged to the film size; "only marked shots" narrows it
+      assert.equal(await page.getAttribute('#vCoverage .on', 'data-v'), 'all');
+      assert.ok(await page.isChecked('#vUpscale'));
+      await page.click('#vCoverage [data-v=marked]');
+      await page.click('label.toggle:has(#vUpscale)');
+      assert.ok(await page.isDisabled('#vUpscaler'));
+      await page.click('label.toggle:has(#vUpscale)');
+      await page.fill('#vUpscaler', 'lanczos'); await page.fill('#vStretch', '3'); // clamped to 2
+      await page.$eval('#set-motion', el => el.scrollIntoView({ block: 'start' }));
+      await shot(page, `${c.tag}-12a-settings-video`);
       await page.fill('#vSteps', '25'); await page.fill('#vSec', '4');
       await page.click('label.toggle:has(#vDepth)');
       await sleep(400);
@@ -501,6 +542,10 @@ for (const c of COMBOS) {
       await page.waitForSelector('#settings[open]', { state: 'detached' });
       assert.deepEqual([body.image.engine, body.image.candidates, body.image.critic, body.image.minScore, body.image.maxRounds, body.image.upscaler], ['comfyui', 4, true, 8, 3, '4x-UltraSharp.pth']);
       assert.deepEqual([body.video.engine, body.video.steps, body.video.seconds, body.video.depth, body.video.unet, body.video.fps], ['wan22', 25, 4, false, 'wan2.2_ti2v_5B_fp16.safetensors', 24]);
+      assert.deepEqual([body.video.coverage, body.video.upscale, body.video.upscaler, body.video.maxStretch], ['marked', true, 'lanczos', 2]);
+      assert.equal(body.image.ipWeightType, 'standard');
+      assert.deepEqual([body.engine.fallback?.preset, body.engine.fallback?.protocol, body.engine.fallback?.baseURL, body.engine.fallback?.model, body.engine.idleSeconds, body.engine.watchdogMinutes, body.engine.callMinutes],
+        ['lmstudio', 'openai', 'http://127.0.0.1:1234/v1', 'qwen2.5-vl-7b', 120, 30, 12]);
       assert.equal(body.engine.doctorPasses, 1);
       assert.deepEqual(body.voice.whisper, { enabled: whisperWas, gain: -40 });
       assert.equal(body.image.checkpoint, 'RealVisXL_V5.0_Lightning_fp16.safetensors');
@@ -508,6 +553,16 @@ for (const c of COMBOS) {
       await gotoTab(page, 'board');
       assert.ok(!(await page.$('.banner')));
       if (body.video && (await api('settings')).video) assert.ok(!(await page.$('.motion-hint:not([hidden])')));
+      // pictures and image-to-video on, only marked shots: the marked shots' clips are pending, the others stay stills
+      const marked = shotsOf(await project(pidOf(page))).filter(x => x.kind === 'shot').map(x => [x.id, Number(x.motion) === 2]);
+      for (const [sid, m] of marked) assert.ok(await page.$(`.shot[data-shot="${sid}"] .vbadge.${m ? 'pending' : 'still'}`), `${sid}: ${m ? 'pending' : 'still'} badge`);
+      assert.ok(marked.some(([, m]) => m) && marked.some(([, m]) => !m));
+      await shot(page, `${c.tag}-12b-board-video-badges`);
+      // the screening room counts the video clips among its stages
+      await gotoTab(page, 'room');
+      assert.equal((await page.textContent('.pipe[data-pipe=video] .v')).trim(), `0/${marked.filter(([, m]) => m).length}`);
+      await noScroll(page, 'room with the video stage');
+      await gotoTab(page, 'board');
       // back to placeholders: the banner returns and its button opens Settings at Pictures
       await page.click(c.vp === 'phone' ? '#topSettings' : '#engineChip');
       await page.waitForSelector('#settings[open] #sPic');
@@ -524,7 +579,7 @@ for (const c of COMBOS) {
       await page.keyboard.press('Escape');
       await page.waitForSelector('#settings[open]', { state: 'detached' });
       // put back what this test changed, so the next combination starts from the same settings (pictures stay off)
-      await api('settings', { voice: { whisper: saved.voice.whisper }, image: { ...saved.image, engine: 'none' }, engine: saved.engine, ...(saved.video ? { video: saved.video } : {}) });
+      await api('settings', { voice: { whisper: saved.voice.whisper }, image: { ...saved.image, engine: 'none' }, engine: { ...saved.engine, fallback: null }, ...(saved.video ? { video: saved.video } : {}) });
       clean(page);
     });
 

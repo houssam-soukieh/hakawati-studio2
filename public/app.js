@@ -77,9 +77,22 @@ const T = {
     negative: 'Negative prompt', ipadapter: 'Keep faces with IP-Adapter (needs ComfyUI_IPAdapter_plus)', ipWeight: 'IP-Adapter weight', testComfy: '🔌 Test ComfyUI',
     candidates: 'Pictures to choose from (1–4)', critic: 'Picture critic', minScore: 'Lowest accepted score (1–10)', maxRounds: 'Repaint rounds (1–3)', upscaler: 'Upscaler (empty = none)',
     criticNote: 'The critic uses the text engine with vision: it looks at the candidate pictures, keeps the best one and repaints any picture that scores below the threshold.',
-    motionTitle: 'Motion (image to video)', motionNote: 'Image-to-video runs only on shots marked “Image to video” in the storyboard (motion 2); every other shot stays a still picture with a camera move.',
-    videoOff: 'Off', videoWan: 'Wan 2.2 (TI2V 5B)', unet: 'Video model (UNet)', clipModel: 'Text encoder (CLIP)', vae: 'VAE', clipSeconds: 'Clip length (s)', clipFps: 'Clip frames per second',
+    motionTitle: 'Motion (image to video)', motionNote: 'With Wan 2.2 on, every story shot becomes a real video clip exactly as long as the shot (longer shots: slowed with motion interpolation, then chained runs); title and end cards stay stills. On an 8 GB card a clip takes minutes — plan whole films as overnight runs; the log estimates the time before it starts.',
+    videoOff: 'Off', videoWan: 'Wan 2.2 (TI2V 5B)', unet: 'Video model (UNet)', clipModel: 'Text encoder (CLIP)', vae: 'VAE', clipSeconds: 'Longest single Wan run (s, ≤ 5)', clipFps: 'Clip frames per second',
     depth: '2.5D parallax for still shots (from a depth map)',
+    coverage: 'Which shots become video', coverageAll: 'Every story shot', coverageMarked: 'Only shots marked “Image to video”',
+    upscaleClips: 'Enlarge clips to the film size (4x-UltraSharp in ComfyUI; ffmpeg if it is missing)', clipUpscaler: 'Upscale model', clipUpscalerPh: 'auto (4x-UltraSharp) — or “lanczos” for the fast one',
+    maxStretch: 'Slow a run down at most (×, then chain)',
+    vReady: '🎬 video ready', vPending: '🎬 video pending', vStill: '🖼 still + camera', vCard: '🖼 still (title/end)',
+    vReadyTitle: 'This shot plays as a real video clip, as long as the shot.', vPendingTitle: 'This shot gets a video clip on the next “Make the film” (or Motion) run; until then it is a still picture with a camera move.',
+    vStillTitle: 'This shot stays a still picture with a camera move (image-to-video is off, or only marked shots get clips).', vCardTitle: 'Title and end cards are always stills.',
+    pipeVideo: 'Video',
+    notReviewed: '⚠ not reviewed by the critic — will be judged on the next paint run', templatePrompt: '📝 prompt from template — will be rewritten when the engine is back',
+    fallbackTitle: 'Fallback engine', fallbackNote: 'Takes over a call when the engine above keeps failing (empty answers, rate limits, stalls, no connection) — e.g. LM Studio on this PC. A key is optional for a local server.',
+    fbNone: 'None', fbKeyPh: 'Key (optional for a local server)',
+    fbOk: f => `↪ Fallback ${f.name || ''}${f.model ? ` (${f.model})` : ''}: “${f.reply ?? ''}”${typeof f.vision === 'boolean' ? ` · Vision ${f.vision ? '✓' : '✗'}` : ''}`, fbFail: f => `↪ Fallback ${f.name || ''}: ✗ ${f.error ?? ''}`,
+    advanced: 'Advanced: time limits', idleSeconds: 'Silence inside an answer (s, 0 = off)', firstByteSeconds: 'Wait for an answer to start (s)', callMinutes: 'One call at most (min)', watchdogMinutes: 'Job watchdog (min, 0 = off)',
+    ipWeightType: 'IP-Adapter weight type', ipTypes: { 'prompt is more important': 'Prompt is more important', standard: 'Standard', 'style transfer': 'Style transfer' },
     comfyOk: v => `✓ ComfyUI ${v.version} · ${v.gpu || 'GPU?'}${v.vram ? ` ${v.vram} GB` : ''} · ${(v.checkpoints ?? []).length} checkpoints${v.upscalers ? ` · ${v.upscalers.length} upscalers` : ''}`,
     ipOk: 'IP-Adapter ✓', ipNo: 'IP-Adapter ✗', ipMissing: m => `IP-Adapter: nodes installed, models missing: ${m}`,
     settingsSaved: 'Settings saved', failedSt: e => `Failed: ${e}`, stoppedSt: 'Stopped', doneSt: d => `Done ✓ (${d})`, queuedMore: n => ` (+${n} queued)`,
@@ -149,9 +162,22 @@ const T = {
     negative: 'ما يجب تجنّبه (Negative prompt)', ipadapter: 'ثبات الوجوه عبر IP-Adapter (يتطلب ComfyUI_IPAdapter_plus)', ipWeight: 'قوة IP-Adapter', testComfy: '🔌 اختبر ComfyUI',
     candidates: 'عدد الصور المرشّحة (1–4)', critic: 'ناقد الصور', minScore: 'أدنى درجة مقبولة (1–10)', maxRounds: 'جولات إعادة الرسم (1–3)', upscaler: 'نموذج التكبير (فارغ = بلا تكبير)',
     criticNote: 'يستعين الناقد بمحرك النصوص القادر على الرؤية: يقارن الصور المرشّحة ويختار أفضلها، ويعيد رسم كل صورة تقل درجتها عن الحد الأدنى.',
-    motionTitle: 'الحركة (من صورة إلى فيديو)', motionNote: 'لا يعمل التحويل من صورة إلى فيديو إلا على اللقطات المعلَّمة بـ«فيديو من الصورة» في لوحة اللقطات (الحركة 2)، وتبقى بقية اللقطات صوراً ثابتة تتحرك فوقها الكاميرا.',
-    videoOff: 'معطّلة', videoWan: 'Wan 2.2 (TI2V 5B)', unet: 'نموذج الفيديو (UNet)', clipModel: 'مُرمِّز النص (CLIP)', vae: 'VAE', clipSeconds: 'طول المقطع (ثانية)', clipFps: 'إطارات المقطع في الثانية',
+    motionTitle: 'الحركة (من صورة إلى فيديو)', motionNote: 'حين يعمل Wan 2.2 تصير كل لقطة من الحكاية مقطع فيديو حقيقياً بطول اللقطة تماماً (اللقطات الأطول: إبطاء بالاستيفاء الحركي ثم تشغيلات متسلسلة)، وتبقى بطاقتا العنوان والنهاية ثابتتين. على بطاقة 8 GB يأخذ المقطع دقائق — اجعل الأفلام الكاملة عملاً ليلياً؛ يقدّر السجل الوقت قبل البدء.',
+    videoOff: 'معطّلة', videoWan: 'Wan 2.2 (TI2V 5B)', unet: 'نموذج الفيديو (UNet)', clipModel: 'مُرمِّز النص (CLIP)', vae: 'VAE', clipSeconds: 'أطول تشغيل Wan واحد (ثانية، ≤ 5)', clipFps: 'إطارات المقطع في الثانية',
     depth: 'عمق 2.5D للّقطات الثابتة (من خريطة العمق)',
+    coverage: 'اللقطات التي تصير فيديو', coverageAll: 'كل لقطات الحكاية', coverageMarked: 'المعلَّمة «فيديو من الصورة» فقط',
+    upscaleClips: 'تكبير المقاطع إلى مقاس الفيلم (4x-UltraSharp في ComfyUI، أو ffmpeg إن لم يوجد)', clipUpscaler: 'نموذج التكبير', clipUpscalerPh: 'تلقائي (4x-UltraSharp) — أو «lanczos» للسريع',
+    maxStretch: 'أقصى إبطاء للتشغيل الواحد (×، ثم التسلسل)',
+    vReady: '🎬 الفيديو جاهز', vPending: '🎬 الفيديو منتظر', vStill: '🖼 صورة ثابتة + كاميرا', vCard: '🖼 ثابتة (عنوان/نهاية)',
+    vReadyTitle: 'تُعرض هذه اللقطة مقطع فيديو حقيقياً بطولها كاملاً.', vPendingTitle: 'تحصل هذه اللقطة على مقطع فيديو في جولة «اصنع الفيلم» (أو الحركة) التالية؛ وحتى ذلك الحين هي صورة ثابتة تتحرك فوقها الكاميرا.',
+    vStillTitle: 'تبقى هذه اللقطة صورة ثابتة تتحرك فوقها الكاميرا (التحويل إلى فيديو معطّل، أو المقاطع للّقطات المعلَّمة فقط).', vCardTitle: 'بطاقتا العنوان والنهاية ثابتتان دائماً.',
+    pipeVideo: 'الفيديو',
+    notReviewed: '⚠ لم يراجعها الناقد — ستُقيَّم في جولة الرسم التالية', templatePrompt: '📝 وصف من القالب — سيُعاد كتابته حين يعود المحرك',
+    fallbackTitle: 'المحرك الاحتياطي', fallbackNote: 'يتولّى الطلب حين يتكرر فشل المحرك أعلاه (إجابات فارغة، حدود الاستخدام، توقف، انقطاع) — مثل LM Studio على هذا الحاسوب. المفتاح اختياري للخادم المحلي.',
+    fbNone: 'بلا', fbKeyPh: 'المفتاح (اختياري للخادم المحلي)',
+    fbOk: f => `↪ الاحتياطي ${f.name || ''}${f.model ? ` (${f.model})` : ''}: «${f.reply ?? ''}»${typeof f.vision === 'boolean' ? ` · الرؤية ${f.vision ? '✓' : '✗'}` : ''}`, fbFail: f => `↪ الاحتياطي ${f.name || ''}: ✗ ${f.error ?? ''}`,
+    advanced: 'متقدم: حدود الوقت', idleSeconds: 'صمت داخل الإجابة (ثانية، 0 = بلا)', firstByteSeconds: 'انتظار بدء الإجابة (ثانية)', callMinutes: 'أقصى مدة للطلب (دقيقة)', watchdogMinutes: 'مراقب المهمة (دقيقة، 0 = بلا)',
+    ipWeightType: 'نوع وزن IP-Adapter', ipTypes: { 'prompt is more important': 'الوصف أهم', standard: 'قياسي', 'style transfer': 'نقل الأسلوب' },
     comfyOk: v => `✓ ComfyUI ${v.version} · ${v.gpu || 'GPU?'}${v.vram ? ` ${v.vram} GB` : ''} · النماذج: ${(v.checkpoints ?? []).length}${v.upscalers ? ` · نماذج التكبير: ${v.upscalers.length}` : ''}`,
     ipOk: 'IP-Adapter ✓', ipNo: 'IP-Adapter ✗', ipMissing: m => `IP-Adapter: العُقد مثبّتة، لكن النماذج ناقصة: ${m}`,
     settingsSaved: 'حُفظت الإعدادات', failedSt: e => `تعذّر الإكمال: ${e}`, stoppedSt: 'أُوقفت', doneSt: d => `اكتملت ✓ (${d})`, queuedMore: n => ` (+${n} في الانتظار)`,
@@ -190,10 +216,15 @@ const S = {
   ani: null,
 };
 // Defaults for settings keys the server may not send yet (POST /api/settings saves whatever it gets).
-const IMAGE_DEF = { candidates: 2, critic: true, minScore: 7, maxRounds: 2, upscaler: '' };
-const VIDEO_DEF = { engine: 'none', unet: 'wan2.2_ti2v_5B_fp16.safetensors', clip: 'umt5_xxl_fp8_e4m3fn_scaled.safetensors', vae: 'wan2.2_vae.safetensors', steps: 20, cfg: 5, fps: 24, seconds: 5, depth: true };
+const IMAGE_DEF = { candidates: 2, critic: true, minScore: 7, maxRounds: 2, upscaler: '', ipWeight: 0.55, ipWeightType: 'prompt is more important' };
+const IP_TYPES = ['prompt is more important', 'standard', 'style transfer'];
+const VIDEO_DEF = { engine: 'none', coverage: 'all', upscale: true, upscaler: '', maxStretch: 1.6, unet: 'wan2.2_ti2v_5B_fp16.safetensors', clip: 'umt5_xxl_fp8_e4m3fn_scaled.safetensors', vae: 'wan2.2_vae.safetensors', steps: 20, cfg: 5, fps: 24, seconds: 5, depth: true };
+const ENGINE_DEF = { concurrency: 2, doctorPasses: 2, idleSeconds: 90, firstByteSeconds: 300, callMinutes: 12, watchdogMinutes: 20 };
+const LMSTUDIO = { label: 'LM Studio (local)', labelAr: 'LM Studio (محلي)', protocol: 'openai', baseURL: 'http://127.0.0.1:1234/v1', model: '' };
 const picturesOn = () => S.settings?.image?.engine === 'comfyui';
 const videoOn = () => S.settings?.video?.engine === 'wan22';
+/** Will the motion step give this story shot a video clip? Wan on, pictures on, and every shot (or only marked ones). */
+const wantsClip = sh => !!sh && sh.kind === 'shot' && videoOn() && picturesOn() && (S.settings?.video?.coverage !== 'marked' || Number(sh.motion) === 2);
 /** A shot shown with a stand-in drawing rather than a real picture: never present it as a result. */
 const placeholderShot = id => !picturesOn() || !S.p?.assets?.art?.[id]?.image;
 const phBadge = (cls = '') => `<span class="ph-badge ${cls}" title="${esc(t('placeholderTitle'))}">${esc(t('placeholder'))}</span>`;
@@ -573,15 +604,29 @@ function statusHTML(id, kind) {
   const s = S.p.status?.[id] ?? {}, sh = findShot(id)?.sh;
   const icon = (ok, need, label, ch) => !need ? '' : `<span class="${ok ? 'y' : 'n'}" title="${esc(label)}: ${ok ? t('ready') : t('needsRedo')}">${ch}</span>`;
   return icon(s.voice, !!sh?.narration, t('stVoice'), '🎙') + icon(s.art, kind === 'shot', t('stArt'), picturesOn() ? '🖼' : '🎨') +
-    icon(s.video, !!s.video || (kind === 'shot' && videoOn() && Number(sh?.motion) === 2), t('stClip'), '🎬') +
+    icon(s.video, !!s.video || wantsClip(sh), t('stClip'), '🎬') +
     (s.depth ? `<span class="y" title="${esc(t('stDepth'))}: ${esc(t('ready'))}">◐</span>` : '') + icon(s.clip && s.art && s.voice, true, t('stFilm'), '🎞') +
     (s.problems?.length ? `<span class="w" title="${esc(s.problems.join('\n'))}">⚠ ${s.problems.length}</span>` : '');
 }
 
-/** Corner badges on a storyboard frame: "placeholder" and the critic's score (both read from the status safely). */
+/** What a shot will be on screen, told truthfully: a video clip (ready or still to make), a still with a camera move,
+ *  or a title/end card. */
+function videoBadgeHTML(id, kind) {
+  const s = S.p.status?.[id] ?? {}, sh = findShot(id)?.sh;
+  const [cls, label, title] = kind !== 'shot' ? ['card', 'vCard', 'vCardTitle'] : s.video ? ['ready', 'vReady', 'vReadyTitle'] : wantsClip(sh) ? ['pending', 'vPending', 'vPendingTitle'] : ['still', 'vStill', 'vStillTitle'];
+  return `<span class="vbadge ${cls}" title="${esc(t(title))}">${esc(t(label))}</span>`;
+}
+/** Notes under a storyboard frame: a picture the critic could not judge yet, a prompt written from the template. */
+function flagsHTML(id, kind) {
+  if (kind !== 'shot') return '';
+  const s = S.p.status?.[id] ?? {}, a = S.p.assets?.art?.[id];
+  return (s.reviewed === false ? `<div class="flag warn" data-flag="unreviewed">${esc(t('notReviewed'))}</div>` : '') +
+    (a?.promptSource === 'template' ? `<div class="flag" data-flag="template">${esc(t('templatePrompt'))}</div>` : '');
+}
+/** Corner badges on a storyboard frame: "placeholder", what the shot is on screen, and the critic's score. */
 function frameBadgesHTML(id, kind) {
   const s = S.p.status?.[id] ?? {}, score = Number(s.score);
-  return (kind === 'shot' && placeholderShot(id) ? phBadge() : '') +
+  return (kind === 'shot' && placeholderShot(id) ? phBadge() : '') + videoBadgeHTML(id, kind) +
     (s.score != null && Number.isFinite(score) ? `<span class="score ${score >= (S.settings?.image?.minScore ?? IMAGE_DEF.minScore) ? 'ok' : 'low'}" title="${esc(s.critique ? `${t('critique')}: ${s.critique}` : t('critique'))}">${esc(t('score', fmt(score)))}</span>` : '');
 }
 
@@ -605,6 +650,7 @@ function shotCardHTML(sh, sc, idx) {
   const btn = (act, title, ch, off) => `<button class="icon-btn" data-act="${act}" title="${esc(title)}" aria-label="${esc(title)}" ${off ? 'disabled' : ''}>${ch}</button>`;
   return `<div class="shot" data-shot="${esc(sh.id)}">${frame}
     <div class="body">
+      <div class="flags">${flagsHTML(sh.id, sh.kind)}</div>
       <div class="chips">
         ${sel('shotType', t('shotSize'), opts(S.meta.shotTypes, sh.shotType, L('shotType')))}
         ${sel('camera', t('cameraMove'), opts(S.meta.cameras, sh.camera, L('camera')))}
@@ -740,7 +786,7 @@ function onBoardInput(e) {
   if (e.type === 'input' && el.tagName === 'SELECT') return;
   const { sh } = findShot(card.dataset.shot);
   sh[k] = k === 'seconds' ? Math.min(15, Math.max(1.5, Number(el.value) || 4)) : k === 'motion' ? Number(el.value) : el.value;
-  if (k === 'motion') { $('.motion-hint', card).hidden = !(sh.motion === 2 && !videoOn()); $('.st', card).innerHTML = statusHTML(sh.id, sh.kind); }
+  if (k === 'motion') { $('.motion-hint', card).hidden = !(sh.motion === 2 && !videoOn()); $('.st', card).innerHTML = statusHTML(sh.id, sh.kind); $('.badges', card).innerHTML = frameBadgesHTML(sh.id, sh.kind); }
   card.classList.add('dirty');
   changed();
 }
@@ -852,6 +898,8 @@ function refreshLive() {
     const fr = $('.frame', card);
     if (s.thumb && fr.style.backgroundImage !== `url("${s.thumb}")`) { fr.style.backgroundImage = `url('${s.thumb}')`; $('.ph', fr)?.remove(); if (!$('.play', fr)) fr.insertAdjacentHTML('afterbegin', '<div class="play" aria-hidden="true">▶</div>'); }
     $('.badges', card).innerHTML = frameBadgesHTML(id, sh.kind);
+    const fl = $('.flags', card);
+    if (fl) fl.innerHTML = flagsHTML(id, sh.kind);
     const times = whisperTimes(sh);
     $$('.wh-row', card).forEach((wr, i) => { $('.wh-time', wr).textContent = whisperTime(times[i]); if (times[i]?.color) $('.dot', wr).style.background = times[i].color; });
     for (const [cls, v] of [['.prompt-line', s.prompt], ['.critique-line', s.critique]]) {
@@ -917,7 +965,9 @@ function renderRoom() {
   const shape = shapeCls();
   const castNeeded = S.sp.cast.length && (picturesOn() || p.options.consistentCast) ? 1 : 0;
   const castDone = picturesOn() ? (Object.keys(p.castImages ?? {}).length >= S.sp.cast.length ? 1 : 0) : (p.assets.cast ? 1 : 0);
-  const pipes = [['🎙', c('voice', spoken), spoken.length], ['👥', castDone, castNeeded], [picturesOn() ? '🖼' : '🎨', c('art', story), story.length], ['🎞', c('clip', shots), shots.length], ['🏁', p.final ? 1 : 0, 1]];
+  const clipShots = story.filter(wantsClip); // the shots the motion step turns into video clips
+  const pipes = [['🎙', t('pipe')[0], c('voice', spoken), spoken.length], ['👥', t('pipe')[1], castDone, castNeeded], [picturesOn() ? '🖼' : '🎨', t('pipe')[2], c('art', story), story.length],
+    ...(videoOn() ? [['🎬', t('pipeVideo'), c('video', clipShots), clipShots.length, 'video']] : []), ['🎞', t('pipe')[3], c('clip', shots), shots.length], ['🏁', t('pipe')[4], p.final ? 1 : 0, 1]];
   const placeholders = story.some(sh => placeholderShot(sh.id));
   tab.innerHTML = `
     <div class="row" style="justify-content:center;margin-bottom:14px">
@@ -928,7 +978,7 @@ function renderRoom() {
     <div class="room" style="margin-top:22px">
       <div class="card" style="display:flex;flex-direction:column;gap:14px">
         <h3>${t('stages')}</h3>
-        <div class="pipeline">${pipes.map(([i, a, b], k) => `<div class="pipe ${a >= b ? 'ok' : ''}"><div class="i">${i}</div><div class="k">${t('pipe')[k]}</div><div class="v">${b ? `${a}/${b}` : '—'}</div></div>`).join('')}</div>
+        <div class="pipeline" style="--n:${pipes.length}">${pipes.map(([i, k, a, b, id]) => `<div class="pipe ${a >= b ? 'ok' : ''}"${id ? ` data-pipe="${id}"` : ''}><div class="i">${i}</div><div class="k">${k}</div><div class="v">${b ? `${a}/${b}` : '—'}</div></div>`).join('')}</div>
         ${stale ? `<div class="note">${t('stale')}</div>` : ''}
         <div class="row"><button class="btn primary" id="roomMake">${p.final ? t('updateFilm') : t('makeFilm')}</button>
           <button class="btn ghost" id="roomForce" title="${esc(t('rerenderTitle'))}">${t('rerender')}</button></div>
@@ -1066,7 +1116,10 @@ const numOf = (el, def) => { const v = el.value.trim() === '' ? NaN : Number(el.
 async function openSettings(section) {
   let s;
   try { s = S.settings = await api('settings'); } catch (e) { return fail(e); }
-  const d = $('#settings'), e = { doctorPasses: 2, ...s.engine }, im = { ...IMAGE_DEF, ...s.image }, vid = { ...VIDEO_DEF, ...s.video }, wh = { enabled: true, gain: -12, ...s.voice.whisper };
+  const d = $('#settings'), e = { ...ENGINE_DEF, ...s.engine }, im = { ...IMAGE_DEF, ...s.image }, vid = { ...VIDEO_DEF, ...s.video }, wh = { enabled: true, gain: -12, ...s.voice.whisper };
+  const fb = e.fallback && typeof e.fallback === 'object' ? e.fallback : null;
+  // the fallback's ready-made engines: LM Studio first (the local one), never the offline mock
+  const fbPresets = Object.entries({ lmstudio: LMSTUDIO, ...s.presets }).filter(([k]) => k !== 'mock');
   const voiceSel = (lang, cur) => `<select data-voice="${lang}"><option selected>${esc(cur)}</option></select>`;
   const sec = (k, title, body) => `<section class="set-sec" id="set-${k}" aria-labelledby="set-${k}-h"><h3 id="set-${k}-h">${title}</h3>${body}</section>`;
   d.innerHTML = `
@@ -1087,14 +1140,36 @@ async function openSettings(section) {
       </div>
       <div class="grid2">
         <label class="f"><span>${t('temperature', e.temperature)}</span><input type="range" id="sTemp" min="0" max="1.2" step="0.05" value="${e.temperature}"></label>
-        ${numIn('sConc', t('painters'), e.concurrency, 1, 6)}
+        ${numIn('sConc', t('painters'), e.concurrency ?? ENGINE_DEF.concurrency, 1, 6)}
       </div>
       <div class="grid2">
         ${numIn('sDoc', t('doctorPasses'), e.doctorPasses, 0, 3)}
         <div class="muted small hint">${t('doctorNote')}</div>
       </div>
+      <details class="adv" id="sAdv"><summary>${t('advanced')}</summary>
+        <div class="grid2">
+          ${numIn('sIdle', t('idleSeconds'), e.idleSeconds, 0, 3600)}
+          ${numIn('sFirst', t('firstByteSeconds'), e.firstByteSeconds, 10, 3600)}
+          ${numIn('sCallMin', t('callMinutes'), e.callMinutes, 1, 120)}
+          ${numIn('sWatch', t('watchdogMinutes'), e.watchdogMinutes, 0, 600)}
+        </div>
+      </details>
+      <h4 class="sub" id="sFbH">${t('fallbackTitle')}</h4>
+      <div class="muted small">${t('fallbackNote')}</div>
+      <label class="f">${t('preset')}<select id="fPreset" aria-describedby="sFbH"><option value="" ${fb ? '' : 'selected'}>${t('fbNone')}</option>${fbPresets.map(([k, v]) => `<option value="${k}" ${fb && k === fb.preset ? 'selected' : ''}>${esc(styleLabel(v))}</option>`).join('')}</select></label>
+      <div id="fBox" class="stack" ${fb ? '' : 'hidden'}>
+        <div class="grid2">
+          <label class="f">${t('protocol')}<select id="fProto">${['openai', 'anthropic'].map(x => `<option ${x === (fb?.protocol ?? 'openai') ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+          <label class="f">${t('model')}<input type="text" id="fModel" value="${esc(fb?.model ?? '')}" dir="ltr"></label>
+        </div>
+        <div class="grid2">
+          <label class="f">${t('baseUrl')}<input type="text" id="fBase" value="${esc(fb?.baseURL ?? '')}" dir="ltr" placeholder="http://127.0.0.1:1234/v1"></label>
+          <label class="f">${t('apiKey')}<input type="password" id="fKey" value="" placeholder="${esc(fb?.hasKey ? t('keepKey', fb.apiKey) : t('fbKeyPh'))}" dir="ltr" autocomplete="off"></label>
+        </div>
+      </div>
       <div class="row"><button class="btn" id="sTest">${t('test')}</button><span id="sTestOut" class="small muted" role="status"></span></div>
-      <div id="sVision" class="small" role="status" hidden></div>`)}
+      <div id="sVision" class="small" role="status" hidden></div>
+      <div id="sFbOut" class="small" role="status" hidden></div>`)}
 
       ${sec('pictures', t('pictures'), `
       <div class="note small">${t('picturesNote')}</div>
@@ -1111,9 +1186,10 @@ async function openSettings(section) {
           <label class="f">${t('scheduler')}<select id="iSched">${['karras', 'sgm_uniform', 'normal', 'exponential', 'simple'].map(x => `<option ${x === im.scheduler ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
         </div>
         <label class="f">${t('negative')}<textarea id="iNeg" rows="2" dir="ltr" style="text-align:left">${esc(im.negative)}</textarea></label>
+        ${toggleIn('iIp', t('ipadapter'), im.ipadapter)}
         <div class="grid2">
-          ${toggleIn('iIp', t('ipadapter'), im.ipadapter)}
           ${numIn('iIpW', t('ipWeight'), im.ipWeight, 0, 1.5, 0.05)}
+          <label class="f">${t('ipWeightType')}<select id="iIpType">${IP_TYPES.map(x => `<option value="${esc(x)}" ${x === im.ipWeightType ? 'selected' : ''}>${esc(t('ipTypes')[x] ?? x)}</option>`).join('')}</select></label>
         </div>
         <div class="grid2">
           ${numIn('iCand', t('candidates'), im.candidates, 1, 4)}
@@ -1133,10 +1209,14 @@ async function openSettings(section) {
       <div class="note small">${t('motionNote')}</div>
       <div class="seg" id="vEngine" role="group" aria-labelledby="set-motion-h">${[['wan22', t('videoWan')], ['none', t('videoOff')]].map(([v, l]) => `<button type="button" data-v="${v}" class="${vid.engine === v ? 'on' : ''}" aria-pressed="${vid.engine === v}">${l}</button>`).join('')}</div>
       <div id="vBox" class="stack" ${vid.engine === 'wan22' ? '' : 'hidden'}>
+        <div class="f" id="vCovL">${t('coverage')}</div>
+        <div class="seg" id="vCoverage" role="group" aria-labelledby="vCovL">${[['all', t('coverageAll')], ['marked', t('coverageMarked')]].map(([v, l]) => `<button type="button" data-v="${v}" class="${(vid.coverage === 'marked' ? 'marked' : 'all') === v ? 'on' : ''}" aria-pressed="${(vid.coverage === 'marked' ? 'marked' : 'all') === v}">${l}</button>`).join('')}</div>
+        ${toggleIn('vUpscale', t('upscaleClips'), vid.upscale !== false && vid.upscale !== 'false')}
+        <div class="grid2">${txtIn('vUpscaler', t('clipUpscaler'), vid.upscaler, t('clipUpscalerPh'))}${numIn('vStretch', t('maxStretch'), vid.maxStretch, 1, 2, 0.1)}</div>
         <div class="grid2">${txtIn('vUnet', t('unet'), vid.unet, VIDEO_DEF.unet)}${txtIn('vClip', t('clipModel'), vid.clip, VIDEO_DEF.clip)}</div>
         <div class="grid2">${txtIn('vVae', t('vae'), vid.vae, VIDEO_DEF.vae)}${numIn('vSteps', t('steps'), vid.steps, 1, 60)}</div>
         <div class="grid2">${numIn('vCfg', t('cfg'), vid.cfg, 1, 15, 0.5)}${numIn('vFps', t('clipFps'), vid.fps, 8, 60)}</div>
-        <div class="grid2">${numIn('vSec', t('clipSeconds'), vid.seconds, 1, 10, 0.5)}</div>
+        <div class="grid2">${numIn('vSec', t('clipSeconds'), vid.seconds, 1, 5, 0.5)}</div>
       </div>
       ${toggleIn('vDepth', t('depth'), vid.depth)}`)}
 
@@ -1157,19 +1237,30 @@ async function openSettings(section) {
     <div class="dlg-f"><button class="btn primary" id="sSave">${t('save')}</button><button class="btn ghost" id="sCancel">${t('cancel')}</button></div>`;
   const v = id => $(id, d).value.trim();
   const form = () => ({
-    engine: { preset: v('#sPreset'), protocol: v('#sProto'), baseURL: v('#sBase'), model: v('#sModel'), artModel: v('#sArt'), apiKey: v('#sKey'), temperature: Number($('#sTemp', d).value), concurrency: numOf($('#sConc', d), 3), doctorPasses: numOf($('#sDoc', d), 2) },
+    engine: { preset: v('#sPreset'), protocol: v('#sProto'), baseURL: v('#sBase'), model: v('#sModel'), artModel: v('#sArt'), apiKey: v('#sKey'), temperature: Number($('#sTemp', d).value), concurrency: numOf($('#sConc', d), ENGINE_DEF.concurrency), doctorPasses: numOf($('#sDoc', d), ENGINE_DEF.doctorPasses),
+      idleSeconds: numOf($('#sIdle', d), ENGINE_DEF.idleSeconds), firstByteSeconds: numOf($('#sFirst', d), ENGINE_DEF.firstByteSeconds), callMinutes: numOf($('#sCallMin', d), ENGINE_DEF.callMinutes), watchdogMinutes: numOf($('#sWatch', d), ENGINE_DEF.watchdogMinutes),
+      fallback: v('#fPreset') ? { preset: v('#fPreset'), protocol: v('#fProto'), baseURL: v('#fBase'), model: v('#fModel'), apiKey: v('#fKey') } : null },
     voice: { ...Object.fromEntries($$('[data-voice]', d).map(x => [x.dataset.voice, x.value])), rate: v('#sRate'), pitch: v('#sPitch'), whisper: { enabled: $('#sWhisper', d).checked, gain: numOf($('#sWhGain', d), wh.gain) } },
     render: { quality: v('#sQuality'), fps: Number(v('#sFps')) },
     image: { engine: $('#sPic .on', d).dataset.v, url: v('#iUrl'), checkpoint: v('#iCkpt'), steps: numOf($('#iSteps', d), 6), cfg: numOf($('#iCfg', d), 2),
-      sampler: v('#iSampler'), scheduler: v('#iSched'), negative: v('#iNeg'), ipadapter: $('#iIp', d).checked, ipWeight: numOf($('#iIpW', d), 0.55),
+      sampler: v('#iSampler'), scheduler: v('#iSched'), negative: v('#iNeg'), ipadapter: $('#iIp', d).checked, ipWeight: numOf($('#iIpW', d), IMAGE_DEF.ipWeight), ipWeightType: v('#iIpType'),
       candidates: numOf($('#iCand', d), IMAGE_DEF.candidates), critic: $('#iCritic', d).checked, minScore: numOf($('#iMin', d), IMAGE_DEF.minScore), maxRounds: numOf($('#iRounds', d), IMAGE_DEF.maxRounds), upscaler: v('#iUp') },
-    video: { engine: $('#vEngine .on', d).dataset.v, unet: v('#vUnet') || VIDEO_DEF.unet, clip: v('#vClip') || VIDEO_DEF.clip, vae: v('#vVae') || VIDEO_DEF.vae,
+    video: { engine: $('#vEngine .on', d).dataset.v, coverage: $('#vCoverage .on', d).dataset.v, upscale: $('#vUpscale', d).checked, upscaler: v('#vUpscaler'), maxStretch: numOf($('#vStretch', d), VIDEO_DEF.maxStretch),
+      unet: v('#vUnet') || VIDEO_DEF.unet, clip: v('#vClip') || VIDEO_DEF.clip, vae: v('#vVae') || VIDEO_DEF.vae,
       steps: numOf($('#vSteps', d), VIDEO_DEF.steps), cfg: numOf($('#vCfg', d), VIDEO_DEF.cfg), fps: numOf($('#vFps', d), VIDEO_DEF.fps), seconds: numOf($('#vSec', d), VIDEO_DEF.seconds), depth: $('#vDepth', d).checked },
   });
   $('#sPreset', d).onchange = ev => { const pr = s.presets[ev.target.value]; $('#sProto', d).value = pr.protocol; $('#sBase', d).value = pr.baseURL; $('#sModel', d).value = pr.model; };
   $('#sTemp', d).oninput = ev => { $('#sTempV', d).textContent = ev.target.value; };
   bindSeg($('#sPic', d), val => { $('#sPicBox', d).hidden = val !== 'comfyui'; });
   bindSeg($('#vEngine', d), val => { $('#vBox', d).hidden = val !== 'wan22'; });
+  bindSeg($('#vCoverage', d), () => {});
+  const upBox = () => { for (const el of [$('#vUpscaler', d)]) el.disabled = !$('#vUpscale', d).checked; };
+  $('#vUpscale', d).onchange = upBox; upBox();
+  $('#fPreset', d).onchange = ev => {
+    const k = ev.target.value, pr = Object.fromEntries(fbPresets)[k];
+    $('#fBox', d).hidden = !k;
+    if (pr) { $('#fProto', d).value = pr.protocol === 'anthropic' ? 'anthropic' : 'openai'; $('#fBase', d).value = pr.baseURL; $('#fModel', d).value = pr.model; }
+  };
   d.onchange = ev => { const el = ev.target; if (el.type === 'number' && el.value !== '') el.value = numOf(el, el.value); }; // show the clamped value
   const criticBox = () => { for (const el of $$('#iCriticBox input', d)) el.disabled = !$('#iCritic', d).checked; };
   $('#iCritic', d).onchange = criticBox; criticBox();
@@ -1181,7 +1272,11 @@ async function openSettings(section) {
     catch (err) { out.textContent = `✗ ${err.message}`; out.style.color = 'var(--red)'; return null; }
   };
   $('#sTest', d).onclick = async () => {
-    const out = $('#sTestOut', d), vis = $('#sVision', d), r = await testInto(out, () => api('settings/test', { method: 'POST' }));
+    let raw = null;
+    const out = $('#sTestOut', d), vis = $('#sVision', d), fbOut = $('#sFbOut', d), r = await testInto(out, async () => (raw = await api('settings/test', { method: 'POST' })));
+    const f = raw?.fallback; // the fallback engine's own test, shown even when the main engine failed
+    fbOut.hidden = !f;
+    if (f) { fbOut.textContent = f.ok ? t('fbOk', f) : t('fbFail', f); fbOut.className = `small ${f.ok ? 'ok-t' : 'warn-t'}`; }
     vis.hidden = !r || typeof r.vision !== 'boolean';
     if (!r) return;
     out.textContent = `✓ ${r.model}: “${r.reply}”${r.seconds ? ` (${fmt(r.seconds)} s)` : ''}${r.models?.length ? ` — ${t('modelsAvail', r.models.length)}` : ''}`;

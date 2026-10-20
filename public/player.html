@@ -8,7 +8,7 @@
   One player for everything: the studio previews a shot with it (mode=play, real time), and the renderer drives it
   frame by frame (mode=capture: every animation paused and seeked to t), so what you preview is what you get.
   Camera moves, subtitles, film grain and the title/end cards are drawn here — never by the model.
-  Base layer of a shot, best first: an image-to-video clip (L2, seeked frame by frame), a keyframe with a depth map
+  Base layer of a shot, best first: a video clip (L2, as long as the shot, seeked frame by frame), a keyframe with a depth map
   (L1, WebGL 2.5D parallax), a plain keyframe, or the animated SVG alone. The SVG overlay, captions, grain and
   vignette sit on top of any of them, and so do the beings' whispers («الهمس», bible §6) and the chat "typing…" bubble.
 -->
@@ -73,7 +73,7 @@
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const ease = x => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
   const easeOut = x => 1 - Math.pow(1 - x, 3);
-  let B = null, svgEl = null, cardFn = null, base = null, layer = 'svg', live = false, lastT = 0;
+  let B = null, svgEl = null, cardFn = null, base = null, layer = 'svg', live = false, lastT = 0, clipInfo = null;
   const problems = [], notes = [];   // notes: graceful fallbacks (no WebGL, clip unreadable) — not art problems
   window.__problems = problems;
 
@@ -221,10 +221,11 @@ void main() {
     };
   }
 
-  // L2 — an image-to-video clip. Capture seeks it to the clip frame the film's clock asks for (frame n at t = n/fps,
-  // the last frame held once the clip is over), waits for 'seeked' and for requestVideoFrameCallback to report that
-  // very frame, then copies it into a canvas, so a screenshot can never catch a half-seeked video. Preview lets it
-  // play and only corrects drift. The CSS camera move applies on top, as for a still.
+  // L2 — an image-to-video clip. Capture seeks it to the clip frame the film's clock asks for (frame n at t = n/fps),
+  // waits for 'seeked' and for requestVideoFrameCallback to report that very frame, then copies it into a canvas, so a
+  // screenshot can never catch a half-seeked video. Preview lets it play and only corrects drift. The CSS camera move
+  // applies on top, as for a still. The motion step makes every clip exactly as long as its shot; a clip made for an
+  // older, shorter cut of the shot is slowed down to fit (rate < 1) instead of freezing on its last frame.
   async function videoLayer(m) {
     const vid = document.createElement('video');
     vid.muted = true; vid.playsInline = true; vid.preload = 'auto';
@@ -241,9 +242,12 @@ void main() {
       const vw = vid.videoWidth, vh = vid.videoHeight, [x, y, w, h] = cover(vw, vh, cv.width, cv.height);
       ctx.drawImage(vid, x * vw, y * vh, w * vw, h * vh, 0, 0, cv.width, cv.height);
     };
-    const frameAt = t => Math.min(frames - 1, Math.max(0, Math.floor(t * fps + 1e-4)));
+    const rate = Math.min(1, frames / Math.max(1, B.D * fps));
+    if (rate < 0.999) notes.push(`motion clip is ${(frames / fps).toFixed(2)} s for a ${B.D.toFixed(2)} s shot — slowed to ×${rate.toFixed(2)} so it never freezes (run Motion to remake it)`);
+    const frameAt = t => Math.min(frames - 1, Math.max(0, Math.floor(t * rate * fps + 1e-4)));
     const timeOf = n => (n + 0.5) / fps; // mid-frame: never lands on the boundary with the frame before
     let shown = -1, painting = false, rvfc = 'requestVideoFrameCallback' in vid, misses = 0;
+    clipInfo = { frames, fps, rate };
     return {
       el: cv,
       at(t, exact) {
@@ -276,10 +280,12 @@ void main() {
             vid.currentTime = timeOf(n);
           });
         }
-        // live preview: play, hold the last frame, re-sync when the clock and the clip drift apart
+        // live preview: play (slowed when the clip is short), stop on the last frame at the very end of the shot,
+        // re-sync when the clock and the clip drift apart
         shown = -1;
+        if (vid.playbackRate !== rate) vid.playbackRate = rate;
         if (n >= frames - 1) { if (!vid.paused) vid.pause(); if (Math.abs(vid.currentTime - timeOf(frames - 1)) > 0.05) vid.currentTime = timeOf(frames - 1); }
-        else { if (Math.abs(vid.currentTime - t) > 0.25) vid.currentTime = t; if (vid.paused) vid.play().catch(() => {}); }
+        else { if (Math.abs(vid.currentTime - t * rate) > 0.25) vid.currentTime = t * rate; if (vid.paused) vid.play().catch(() => {}); }
         if (!painting && 'requestVideoFrameCallback' in vid) { // repaint exactly when a new frame is presented
           painting = true;
           const cb = () => { paint(); vid.requestVideoFrameCallback(cb); };
@@ -540,7 +546,7 @@ void main() {
       const anims = document.getAnimations();
       const finite = anims.map(a => { const tm = a.effect?.getComputedTiming?.(); return tm && isFinite(tm.endTime) ? { end: tm.endTime / 1000, name: a.animationName || a.id || '' } : null; }).filter(Boolean);
       const smil = svgEl ? svgEl.querySelectorAll('animate,animateTransform,animateMotion,set').length : 0;
-      return { animations: anims.length, smil, finite, elements: svgEl ? svgEl.querySelectorAll('*').length : 0, problems, layer, notes, whispers: wsp.length, overlay: B.overlay || '' };
+      return { animations: anims.length, smil, finite, elements: svgEl ? svgEl.querySelectorAll('*').length : 0, problems, layer, notes, whispers: wsp.length, overlay: B.overlay || '', clip: layer === 'video' ? clipInfo : null };
     };
     window.__ready = true;
     if (mode === 'play') play();
