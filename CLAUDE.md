@@ -34,7 +34,15 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
 - **Text engine on the desktop was still `mock`** (the key was saved but the preset not switched): Settings → Ready-made
   engine → **CodeCraft (gateway)** → Test (a real reply takes seconds; mock says "The local generator is ready" and
   always reports Vision ✓) → Save. The owner reported Vision ✓ but that test ran on mock — re-check.
-- **No real picture made yet.** Next: first SDXL pictures (RealVisXL), then the pilot.
+- **First real run (T3, 2026-10-20)** on the desktop: real SDXL keyframes; problems found → fixed on main the same day:
+  beings painted as humans (kind-aware portraits/prompts, per-shot negatives, content-safety negatives), Kira's shots
+  one composition (IP-Adapter 0.55 'prompt is more important' + face crop; beings 0.4 'style transfer'), critic failing on
+  CodeCraft empty answers (1 vision call at a time, 6 retries with backoff, unreviewed shots re-judged without repainting),
+  a 5.5 h silent hang (every external wait now bounded + job watchdog), edits lost during a job (`saveJobChanges`).
+  Optional `engine.fallback` (e.g. LM Studio at 127.0.0.1:1234/v1) takes over when CodeCraft gives up.
+  Interceptor on the desktop: **Kaspersky** TLS inspection (truststore handles it). Team board: `docs/team/BOARD.md`.
+- **Owner's direction (2026-10-20): every story shot must be real video (Wan 2.2), not a still + camera move** —
+  `agent/motion2` in progress (coverage 'all', clips cover the whole shot by stretch/chaining, upscaled clips).
 - UI: **English by default, Arabic switch** in the sidebar (`settings.ui.lang`); story language is separate.
 - Server defaults: `image.engine = 'comfyui'`, style `photoreal`. With pictures off, shots are honest "PLACEHOLDER"
   storyboard cards (the cartoon SVG look was dropped at the owner's request — he wants SDXL-photo quality only).
