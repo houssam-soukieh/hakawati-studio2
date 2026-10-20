@@ -73,6 +73,10 @@ strength and at ½× and 1.5× (player constants), look at them, and report what
       back, plus a plain repaint of `s4-1`. Awaiting the owner's look at the attached images before T3c.
       → `docs/team/reports/2026-10-20-t3b-repaint.md`
 
+## Owner's direction (2026-10-20)
+- **English only for now.** The Arabic pilot is paused — the Arabic narrator voices are not good enough. Don't schedule
+  the pilot and don't use an Arabic narrator voice unless the owner asks. Narration: `en-US-AndrewMultilingualNeural`.
+
 ## Open questions for the owner
 - Commercial use later? (Depth Anything V2 Large and 4x-UltraSharp are non-commercial; production is non-commercial for now.)
 - ~~T3 motion count~~ → **Owner decided (2026-10-20): 6 shots with `motion: 2`** — the teaser's 3 (Broker pouring, Orion's rings

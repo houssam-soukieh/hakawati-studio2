@@ -131,7 +131,7 @@ teaser-en.txt, bible.md, director-notes.md, README.ar.md), docs (setup guides, i
   the three vows as "protect = control" → «الهدوء الكبير» (soft control through screens). Key scene: the "typing…"
   dots = a whole negotiation between beings. Ending: Orion wiped; new assistant hesitates and hums the lullaby.
   No real company, tool or country names — ever.
-- First production: ~5-minute pilot (opening + "typing…" scene) + a 60-s English teaser.
+- First production: the 60-s **English** teaser. The ~5-minute Arabic pilot is written (`docs/pilot/pilot-ar.txt`) but paused.
 
 ## Next steps on the desktop
 1. `git pull` in `E:\hakawati`. Fix edge-tts (see Status) and confirm a voice step works.
@@ -142,6 +142,9 @@ teaser-en.txt, bible.md, director-notes.md, README.ar.md), docs (setup guides, i
    VRAM (nvidia-smi), critic scores; show the owner the pictures. Tune parallax strength on real keyframes.
 4. Before pushing a change, run the suites above (safe on the desktop: they use a temp folder).
 5. Turn on Wan 2.2 (Settings → Motion) for a few `motion: 2` shots; measure minutes per clip.
-6. Produce the pilot: story `docs/pilot/pilot-ar.txt`, notes `docs/pilot/director-notes.md`, looks from `docs/pilot/bible.md`,
-   photoreal 16:9, length 300. Then the English teaser (9:16).
+6. **The Arabic pilot is PAUSED (owner, 2026-10-20): the Arabic edge-tts voices are not good enough.** Work in English
+   (narration `en-US-AndrewMultilingualNeural`): the English teaser first (`docs/pilot/teaser-en.txt`, board T3b/T3c).
+   Never use an Arabic narrator voice unless the owner asks. Arabic stays for the UI and the whisper subtitles.
+   If Arabic narration comes back later: compare other edge-tts Arabic voices (ar-SA-HamedNeural, ar-EG-SalmaNeural,
+   ar-AE-HamdanNeural…) and a local GPU TTS before resuming the pilot.
 7. Vendor the fonts into `public/` so renders don't depend on Google Fonts.
