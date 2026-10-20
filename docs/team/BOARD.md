@@ -29,7 +29,7 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       **In progress** — screenplay written and shot list reviewed with the owner (14 shots, ~75 s). Note: the
       teaser's own section in `director-notes.md` only tags 3 shots `motion: 2` (Broker pouring, Orion's rings on
       "No", the Eye's filaments over the city), not 5–6 — that 6-shot list is the *pilot*'s (bible §1). Screenplay
-      matches the teaser's documented 3; flagged to the owner, awaiting a call on whether to force the other 3.
+      matches the teaser's documented 3; **owner's answer: 6** (see Open questions).
       Painting next.
 - [ ] **T4 Parallax tuning**: on 2–3 real keyframes compare depth parallax strength (player constants) and report
       what looks natural; the lead tunes the defaults.
@@ -43,7 +43,9 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
 
 ## Open questions for the owner
 - Commercial use later? (Depth Anything V2 Large and 4x-UltraSharp are non-commercial; production is non-commercial for now.)
-- T3 motion count: teaser notes say 3 shots get `motion: 2`, the board task said 5–6 (that's the pilot's list) — which should it be?
+- ~~T3 motion count~~ → **Owner decided (2026-10-20): 6 shots with `motion: 2`** — the teaser's 3 (Broker pouring, Orion's rings
+  on "No", the Eye's filaments over the city) **plus** Kira's face at 3 AM, the Eye's entrance, Orion's final turn. Set them
+  in the screenplay and paint; Wan seconds 3.
 
 ## Desktop ⇄ cloud link (blocked)
 Tried `ListAgents`/`SendMessage` to `session_0168VRNgUj8LDA9XreHLWoGi`: `list_sessions` finds no other sessions,
