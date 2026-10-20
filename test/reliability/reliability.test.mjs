@@ -230,6 +230,36 @@ describe('unreviewed pictures are judged again later, never repainted for nothin
     assert.ok(gw.state.maxInFlight <= 2 && gw.state.maxVision === 1, `limits held in the art step: ${gw.state.maxInFlight}/${gw.state.maxVision}`);
     console.log(`    ${low}: judged 4/10 → repainted 2 → ${a.score}/10; engine calls in flight ≤ ${gw.state.maxInFlight}, with pictures ≤ ${gw.state.maxVision}`);
   });
+
+  it('run 4: pictures painted from the offline template while the engine was away are kept while it still is, repainted from its prompt once it is back', async () => {
+    const away = [story[0].id, story[2].id], other = story[1].id;
+    const p = loadProject(id);
+    for (const s of away) p.assets.art[s].promptSource = 'template';
+    saveProject(p);
+    const before = loadProject(id).assets.art;
+    // still away: the prompt fails → the template pictures stay, nothing painted, nothing judged
+    gw.state.hook = c => (c.kind === 'prompt' ? '400' : 'ok');
+    let paintsBefore = paints(), logs = [];
+    await runSteps(id, ['art'], { log: m => logs.push(m) });
+    assert.equal(paints() - paintsBefore, 0, 'nothing painted while the engine is away');
+    for (const s of away) {
+      assert.deepEqual(loadProject(id).assets.art[s], before[s]);
+      assert.ok(logs.some(l => new RegExp(`${s}: the text engine is still away`).test(l)), logs.join('\n'));
+    }
+    // back: those two shots (only) are repainted from the engine's own prompt
+    gw.state.hook = () => 'ok';
+    paintsBefore = paints(); logs = [];
+    const from = gw.state.calls.length;
+    await runSteps(id, ['art'], { log: m => logs.push(m) });
+    const q = loadProject(id);
+    assert.equal(paints() - paintsBefore, 4, '2 candidates for each of the two shots');
+    assert.deepEqual(gw.state.calls.slice(from).filter(c => c.kind === 'prompt').map(shotOf).sort(), [...away].sort());
+    for (const s of away) { assert.equal(q.assets.art[s].promptSource, 'engine'); assert.equal(q.assets.art[s].reviewed, true); }
+    assert.deepEqual(q.assets.art[other], before[other], 'an engine-written shot is not touched');
+    await runSteps(id, ['art']);
+    assert.equal(paints() - paintsBefore, 4, 'a third run has nothing to do');
+    console.log(`    ${away.join(', ')}: kept while the engine was away, repainted from its prompts when it came back`);
+  });
 });
 
 describe('saving: a job writes only what it made', () => {

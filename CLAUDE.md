@@ -41,6 +41,11 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
   a 5.5 h silent hang (every external wait now bounded + job watchdog), edits lost during a job (`saveJobChanges`).
   Optional `engine.fallback` (e.g. LM Studio at 127.0.0.1:1234/v1) takes over when CodeCraft gives up.
   Interceptor on the desktop: **Kaspersky** TLS inspection (truststore handles it). Team board: `docs/team/BOARD.md`.
+- **T3b (repaint after the fixes)**: no more nudity, the Broker and the Eye fully non-human, Kira on-model; a live CodeCraft
+  503 outage covered the whole run and the reliability code rode it out (no hang). Follow-ups on main: Orion's faceless head
+  (weighted hint + facial features in the negative when no human is in the frame) and shots painted from the offline
+  template repaint from the engine's prompt once it answers again (`promptSource: 'template'`). The owner is away from the
+  PC and handed the go/no-go to the lead: board **T3d** (finish keyframes, checklist) → **T3c** (all-shots video overnight).
 - **Owner's direction (2026-10-20): every story shot must be real video (Wan 2.2), not a still + camera move** —
   **Done (merged 2026-10-20):** `video.coverage` 'all' (default) | 'marked'; each clip is exactly the shot's length
   (≤5 s one Wan run; ≤8 s one run stretched ≤1.6× with ffmpeg minterpolate; longer → chained runs from the last frame);

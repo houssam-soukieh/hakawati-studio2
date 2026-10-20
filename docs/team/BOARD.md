@@ -21,8 +21,29 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
 5. Never commit `.studio/` (keys) or `projects/`.
 
 ## Tasks for the desktop
+- [ ] **T3d Finish the keyframes (lead's fixes for T3b) — do this first.** `git pull` (the commit that adds this task),
+      restart the Studio. Settings → Test: CodeCraft must answer for real (`Ready ✓` in seconds, `vision: true`). If it
+      still returns 503, wait and test again every ~30 min; do not run art against a dead gateway (it would only keep
+      the template pictures). Then `node make.mjs run 2026-10-20-souls-of-the-algorithms---teaser voice,cast,art`
+      (no `--force`). What it does on its own now:
+      - **Orion**: his portrait prompt gained a weighted faceless head and, without a human in the frame, the negative
+        lists the facial features → his portrait and every Orion shot repaint.
+      - **Every shot painted from the offline template during the outage** (all 14 in T3b) asks the engine for its
+        prompt; when the engine writes it, the shot repaints from it (this is the fix for `s4-1`, the Eye missing over the
+        city) and the critic judges it. Log lines: `✎ <id>: painted from the offline template … asking the engine`.
+        If the engine fails again the picture is kept (`⏸ … still away`), nothing is lost.
+      **Checklist (look at every keyframe yourself — open the PNGs):** (1) every story shot `reviewed` with a score
+      ≥ 7, or ≥ 6 after its rounds when the critique is only about minor details; (2) Orion: no nose, lips or human face —
+      a blank glowing head with two white eye-points; (3) the Eye is in `s2-1` and `s4-1` (a ring of white light with
+      filaments; over the city in `s4-1`); (4) the Broker eyeless, gold; (5) Kira the same woman in all her shots;
+      (6) no skin or nudity on any being, no duplicate figure. A shot that fails: repaint it alone with a note, at most
+      2 tries per shot, e.g. `... run <id> art --shots s4-1 --note "a colossal ring of cold white light floating in the
+      low clouds above the city, filaments descending into the windows"`. Still failing after 2 → record it in the
+      report and go on to T3c with the best you have (do not block the night on one shot).
+      Report: `docs/team/reports/2026-10-20-t3d-keyframes.md` (scores per shot, which repainted, the Orion face result,
+      s/picture); then start T3c in the same session.
 - [ ] **T3c All-shots video for the teaser — overnight** (merged on `main`: every story shot is real Wan 2.2 video).
-      **Start only after the owner approves the T3b keyframes** (he answers you in your chat). `git pull`, restart the
+      **Start when T3d passes its checklist** — the owner is away from the PC and handed the go/no-go to the lead (2026-10-20); you check the list yourself, no need to wait for him. `git pull`, restart the
       Studio and ComfyUI. Settings → Motion: engine **Wan 2.2**, coverage **All shots**, upscale **on** (4x-UltraSharp),
       max stretch 1.6. Check free disk on E: (≥ 20 GB). Then
       `node make.mjs run 2026-10-20-souls-of-the-algorithms---teaser motion` (≈ 3–3.5 h; the log prints the estimate and
@@ -30,14 +51,6 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       (`motion\*.mp4`) and the keyframes to `E:\hakawati\out\teaser\`. Report the MEASURED times (Wan s/frame, upscale
       s/frame, render, total), VRAM/RAM peaks, any failed clip, colour jumps at chained joins, and how the motion looks
       (people, beings as light, camera). Attach 2–3 short clips or GIFs for the owner if possible.
-- [ ] **T3 English teaser — superseded by T3b/T3c below the lead's decision.** Screenplay, motion flags (6 shots, owner's list), voice,
-      cast and art are all done (14 shots + 4 portraits painted), but **did not run motion/render**: the picture
-      critic failed on 13/14 shots (`Empty answer from the engine` from CodeCraft) and the unvalidated candidates
-      that went through for the 3 "being" characters are off-model — Orion/the-Eye/the-Broker painted as
-      realistic humans (Orion with visible bare skin) instead of the bible's faceless/translucent/eyeless
-      design. Full detail, exact errors and 3 options → `docs/team/reports/2026-10-20-t3-english-teaser.md`.
-      Also hit one confirmed 5.5-hour hang (no crash, no timeout) needing a manual kill — see the report's
-      Problem 2, worth a timeout audit in `lib/llm.mjs` / the critic's image path.
 
 ## Lead's decision on T3 (2026-10-20, after reading the T3 report — thank you, excellent report)
 **Hold T3: don't run motion/render and don't repaint yet.** The lead is fixing the root causes on two branches:
@@ -55,6 +68,8 @@ When they land on `main` the lead adds **T3b** here (pull, then `art` repaints o
 strength and at ½× and 1.5× (player constants), look at them, and report what reads natural. Push the report.
 
 ## Done
+- [x] **T3 English teaser (first run)** — superseded by T3b/T3d/T3c; found the being looks, critic and hang problems.
+      → `docs/team/reports/2026-10-20-t3-english-teaser.md`
 - [x] **T1 Narrator voice** — edge-tts + truststore confirmed working (OS cert store, not interceptor-specific); full
       Arabic and English test films rendered. Interceptor: Kaspersky Anti-Virus TLS inspection.
       → `docs/team/reports/2026-10-20-t1-narrator-voice.md`
@@ -70,7 +85,7 @@ strength and at ½× and 1.5× (player constants), look at them, and report what
       city-filaments shot). **Zero critic reviews this run** — not a bug: a live CodeCraft 503 outage sat
       under the whole run; the new retry/fallback/UNREVIEWED-marking code handled it cleanly (no hang, no
       crash, confirms the reliability fix works). Recommend a critic-only re-judge pass once CodeCraft is
-      back, plus a plain repaint of `s4-1`. Awaiting the owner's look at the attached images before T3c.
+      back, plus a plain repaint of `s4-1`. Follow-ups are in T3d (lead's fixes merged).
       → `docs/team/reports/2026-10-20-t3b-repaint.md`
 
 ## Owner's direction (2026-10-20)
