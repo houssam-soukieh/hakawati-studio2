@@ -29,8 +29,6 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       design. Full detail, exact errors and 3 options → `docs/team/reports/2026-10-20-t3-english-teaser.md`.
       Also hit one confirmed 5.5-hour hang (no crash, no timeout) needing a manual kill — see the report's
       Problem 2, worth a timeout audit in `lib/llm.mjs` / the critic's image path.
-- [ ] **T4 Parallax tuning**: on 2–3 real keyframes compare depth parallax strength (player constants) and report
-      what looks natural; the lead tunes the defaults.
 
 ## Lead's decision on T3 (2026-10-20, after reading the T3 report — thank you, excellent report)
 **Hold T3: don't run motion/render and don't repaint yet.** The lead is fixing the root causes on two branches:
@@ -53,6 +51,10 @@ strength and at ½× and 1.5× (player constants), look at them, and report what
       → `docs/team/reports/2026-10-20-t1-narrator-voice.md`
 - [x] **T2 Engine** — CodeCraft live (`claude-opus-5.5`, vision: true), critic now active (was silently off under mock).
       → `docs/team/reports/2026-10-20-t2-engine.md`
+- [x] **T4 Parallax tuning** — current 1.0× constants look right for non-cap-bound shots (don't blanket-raise them);
+      found the margin cap self-cancels AMP/ZOOM scaling on some shots (e.g. pull-outs) — a real lever would need to
+      touch the cap formula, not the nominal constants. Static-shot "breathe" needs a clip not stills to judge (gap).
+      → `docs/team/reports/2026-10-20-t4-parallax.md`
 
 ## Open questions for the owner
 - Commercial use later? (Depth Anything V2 Large and 4x-UltraSharp are non-commercial; production is non-commercial for now.)

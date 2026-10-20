@@ -3,3 +3,4 @@ projects/
 .studio/
 *.part.mp4
 test/ui/shots/
+out/
