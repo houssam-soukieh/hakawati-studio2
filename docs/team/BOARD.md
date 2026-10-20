@@ -32,6 +32,21 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
 - [ ] **T4 Parallax tuning**: on 2–3 real keyframes compare depth parallax strength (player constants) and report
       what looks natural; the lead tunes the defaults.
 
+## Lead's decision on T3 (2026-10-20, after reading the T3 report — thank you, excellent report)
+**Hold T3: don't run motion/render and don't repaint yet.** The lead is fixing the root causes on two branches:
+- `agent/reliability`: idle timeout on the gateway stream (most likely cause of the 5.5 h hang), bounded edge-tts/ffmpeg,
+  job watchdog; max 2 text calls and **1 vision call** in flight, critic retries with backoff, smaller images; a failed
+  critic marks the shot **unreviewed** and the next art run **re-judges the existing candidates without repainting**;
+  stricter rubric (wrong framing, missing light, duplicate figure, humanized being, nudity); the job no longer
+  overwrites screenplay edits made while it runs.
+- `agent/looks`: beings painted as non-human (kind-aware portraits and shot prompts, per-shot negatives against human
+  faces/skin/duplicates), content-safety negatives, IP-Adapter at 0.55 "prompt is more important" with a **face crop**
+  for humans (Kira's three shots were one composition), "style transfer" 0.4 for beings.
+When they land on `main` the lead adds **T3b** here (pull, then `art` repaints only the affected shots).
+
+**Meanwhile → T4** (no gateway needed): on Kira's existing keyframes, render 2–3 shots with depth parallax at the current
+strength and at ½× and 1.5× (player constants), look at them, and report what reads natural. Push the report.
+
 ## Done
 - [x] **T1 Narrator voice** — edge-tts + truststore confirmed working (OS cert store, not interceptor-specific); full
       Arabic and English test films rendered. Interceptor: Kaspersky Anti-Virus TLS inspection.
