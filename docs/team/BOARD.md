@@ -52,6 +52,36 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       s/frame, render, total), VRAM/RAM peaks, any failed clip, colour jumps at chained joins, and how the motion looks
       (people, beings as light, camera). Attach 2–3 short clips or GIFs for the owner if possible.
 
+- [ ] **T5 Engine chain + FreeLLMAPI (owner's request, 2026-10-21) — code, no GPU.** Never interrupt a running T3c job:
+      do this in a separate worktree (`git worktree add E:\hakawati-engines -b desktop/engines origin/main`), run the
+      Studio from there on another port (`set HAKAWATI_PORT=4849`) and push the branch; the lead reviews and merges.
+      **A. Install FreeLLMAPI** (MIT, github.com/tashfeenahmed/freellmapi → Releases → the Windows `.exe`). Tell the owner
+      the file name, size and source before downloading. The owner creates the provider accounts and pastes every
+      provider key into FreeLLMAPI's own dashboard himself (`http://127.0.0.1:31415`) — you never type a key or password.
+      Find and write down: the real API base URL of the desktop app (dashboard port 31415; check whether `/v1` is on
+      the same port), where and how it stores its unified `freellmapi-…` key on Windows (documented API? config file?
+      `%APPDATA%`?), the shape of `GET /v1/models`, the `X-Routed-Via` response header, and whether `model: "auto:smart"`
+      routes a request with an image to a vision model.
+      **B. Code (lib/settings.mjs, lib/llm.mjs, server.mjs, public/app.js, i18n en/ar):**
+      1. **An ordered engine chain** instead of one fallback: `engine.chain = [primary, …]` (CodeCraft first, then
+         FreeLLMAPI `auto:smart`, then optional LM Studio). Keep reading the old `engine.fallback` (migrate it into the chain).
+         A call that still fails on one engine (after its retries) goes to the next; calls with pictures skip engines that
+         cannot see. **Circuit breaker**: an engine that failed 2 calls in a row is skipped for 10 min (log it), then tried
+         again — so an outage costs minutes once, not 3 min on every shot. Each engine keeps its own concurrency limit.
+      2. **A `freellmapi` preset** (openai protocol, base URL from A, model `auto:smart`). **The key is read automatically**
+         from FreeLLMAPI if A found a reliable, documented-enough way (else: the owner pastes it once). A **⟳ Refresh
+         button** in Settings re-reads the key and re-fetches the model list (`GET /v1/models`) — no restart.
+      3. **See and choose the model in the UI**: per engine a model dropdown filled from `/v1/models` (CodeCraft too) plus
+         free text; **"Test all models"** runs a tiny prompt on each listed model one by one (with a pause; free tiers have
+         per-minute limits) and shows a table: model, OK/error, seconds, vision yes/no. The job dock and the log show the
+         engine and model that ANSWERED each call (for FreeLLMAPI the provider/model from `X-Routed-Via`), and
+         `.studio/llm-usage.jsonl` records it.
+      4. Tests: extend `test/reliability/` (fake gateways: chain order, circuit breaker skip + retry after the pause, vision
+         skip, routed-via shown) and `test/ui/studio.test.mjs` (Refresh, model list, Test all). All suites green before push.
+      **Rules:** keys only in `.studio/settings.json` (git-ignored); never print a key in chat, logs, reports or commits
+      (mask it); no private data to CodeCraft or the free providers; FreeLLMAPI's paid "premium catalog" is not needed.
+      Report: `docs/team/reports/2026-10-21-t5-engines.md` (what A found, which providers answered, Test-all table).
+
 ## Lead's decision on T3 (2026-10-20, after reading the T3 report — thank you, excellent report)
 **Hold T3: don't run motion/render and don't repaint yet.** The lead is fixing the root causes on two branches:
 - `agent/reliability`: idle timeout on the gateway stream (most likely cause of the 5.5 h hang), bounded edge-tts/ffmpeg,
