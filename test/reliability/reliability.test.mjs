@@ -11,7 +11,7 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { STUDIO, ROOT, writeJSON, readJSON, run, track, pool, sleep } from '../../lib/util.mjs';
 import { DEFAULTS, saveSettings, publicSettings, loadSettings } from '../../lib/settings.mjs';
-import { askText, engineLoad, testEngine } from '../../lib/llm.mjs';
+import { askText, engineLoad, testEngine, resetEngineHealth } from '../../lib/llm.mjs';
 import { critiquePictures, UNREVIEWED } from '../../lib/critic.mjs';
 import { createProject, loadProject, saveProject, allShots, fileOf, assetSnapshot, saveJobChanges } from '../../lib/project.mjs';
 import { runSteps, shotStatus } from '../../lib/pipeline.mjs';
@@ -24,12 +24,12 @@ process.env.HAKAWATI_RETRY_SCALE = '0.002'; // the patient waits (10…60 s) bec
 const SETTINGS = path.join(STUDIO, 'settings.json');
 const USAGE = path.join(STUDIO, 'llm-usage.jsonl');
 const STORY = fs.readFileSync(path.join(ROOT, 'docs/test-story.txt'), 'utf8');
-let gw, gw2, comfy;
+let gw, gw2, gw3, comfy;
 
 const image = (patch = {}) => ({ ...DEFAULTS.image, engine: 'comfyui', url: comfy.url, checkpoint: 'RealVisXL_V5.0_Lightning_fp16', ipadapter: false, candidates: 2, critic: true, minScore: 7, maxRounds: 2, ...patch });
 /** The fake gateway as the engine (Anthropic format, like CodeCraft), stall limits of 1 s. */
-const useGateway = (engine = {}, img = {}) => writeJSON(SETTINGS, { engine: { ...DEFAULTS.engine, preset: 'codecraft', protocol: 'anthropic', baseURL: gw.url, model: 'fake-opus', apiKey: 'sk-test-0000', concurrency: 2, idleSeconds: 1, firstByteSeconds: 1, ...engine }, ui: { lang: 'en' }, image: image(img) });
-const useMock = (img = {}) => writeJSON(SETTINGS, { engine: { ...DEFAULTS.engine }, ui: { lang: 'en' }, image: image(img) });
+const useGateway = (engine = {}, img = {}) => { resetEngineHealth(); writeJSON(SETTINGS, { engine: { ...DEFAULTS.engine, preset: 'codecraft', protocol: 'anthropic', baseURL: gw.url, model: 'fake-opus', apiKey: 'sk-test-0000', concurrency: 2, idleSeconds: 1, firstByteSeconds: 1, ...engine }, ui: { lang: 'en' }, image: image(img) }); };
+const useMock = (img = {}) => { resetEngineHealth(); writeJSON(SETTINGS, { engine: { ...DEFAULTS.engine }, ui: { lang: 'en' }, image: image(img) }); };
 const png = (size, brightness = 0) => spawnSync('ffmpeg', ['-loglevel', 'error', '-f', 'lavfi', '-i', `testsrc2=s=${size}`, '-frames:v', '1', '-vf', `eq=brightness=${brightness}`, '-f', 'image2pipe', '-vcodec', 'png', 'pipe:1'], { maxBuffer: 64 << 20 }).stdout;
 const usage = () => (fs.existsSync(USAGE) ? fs.readFileSync(USAGE, 'utf8').trim().split('\n').filter(Boolean).map(l => JSON.parse(l)) : []);
 const until = async (cond, ms = 30e3, what = 'condition') => { const end = Date.now() + ms; while (Date.now() < end) { if (await cond()) return; await sleep(50); } throw new Error(`timed out waiting for ${what}`); };
@@ -39,11 +39,12 @@ const shot0 = { id: 's1-1', visual: 'Kira lies awake; her phone lights her face.
 before(async () => {
   gw = await startFakeGateway();
   gw2 = await startFakeGateway();
+  gw3 = await startFakeGateway();
   comfy = await startFakeComfy({ port: 0, delay: 40 });
 });
 after(async () => {
   await closeBrowser();
-  await Promise.all([gw?.close(), gw2?.close(), comfy?.close()]);
+  await Promise.all([gw?.close(), gw2?.close(), gw3?.close(), comfy?.close()]);
 });
 
 describe('time limits: nothing waits forever', () => {
@@ -348,7 +349,7 @@ describe('fallback engine', () => {
     const got = gw2.state.calls.slice(from);
     assert.equal(got.length, 1); assert.equal(got[0].protocol, 'openai'); assert.equal(got[0].model, 'local-qwen'); assert.equal(got[0].auth, 'Bearer local');
     assert.equal(logs.filter(l => /retry \d\/6/.test(l)).length, 5);
-    assert.match(logs.at(-1), /s2-1 prompt: CodeCraft \(gateway\) · fake-opus gave up \(Empty answer from the engine\) — the fallback engine LM Studio \(local\) · local-qwen takes over this call/);
+    assert.match(logs.at(-1), /s2-1 prompt: CodeCraft \(gateway\) · fake-opus gave up \(Empty answer from the engine\) — LM Studio \(local\) · local-qwen takes over this call/);
     assert.equal(usage().at(-1).engine, 'fallback');
     console.log(`    ${logs.at(-1).trim()}`);
   });
@@ -371,7 +372,7 @@ describe('fallback engine', () => {
     const logs = [];
     await assert.rejects(critiquePictures({ ...args, log: m => logs.push(m) }), /Empty answer from the engine/);
     assert.deepEqual(gw2.state.calls.slice(from).map(c => c.kind), ['probe']);
-    assert.ok(logs.some(l => /fallback engine LM Studio \(local\) · local-text-only cannot see pictures/.test(l)), logs.join('\n'));
+    assert.ok(logs.some(l => /LM Studio \(local\) · local-text-only cannot see pictures/.test(l)), logs.join('\n'));
     gw2.state.blind = false;
   });
 
@@ -382,7 +383,7 @@ describe('fallback engine', () => {
     await assert.rejects(askText({ purpose: 'shot', system: 's', user: 'x' }), /HTTP 400/);
     assert.equal(gw2.state.calls.length, from);
     gw.state.hook = () => 'empty'; gw2.state.hook = () => 'empty';
-    await assert.rejects(askText({ purpose: 'shot', system: 's', user: 'x' }), /Empty answer from the engine — fallback LM Studio \(local\) · local-qwen: Empty answer/);
+    await assert.rejects(askText({ purpose: 'shot', system: 's', user: 'x' }), /Empty answer from the engine — LM Studio \(local\) · local-qwen: Empty answer/);
     gw2.state.hook = () => 'ok';
   });
 
@@ -414,5 +415,87 @@ describe('fallback engine', () => {
     saveSettings({ engine: { fallback: null } });
     assert.equal(loadSettings().engine.fallback, null); assert.equal(publicSettings().engine.fallback, null);
     assert.equal(readJSON(SETTINGS).engine.apiKey, 'sk-test-0000', 'the main key is untouched');
+  });
+
+  it('a second entry in engine.chain is masked and kept the same way as the fallback', () => {
+    useGateway();
+    saveSettings({ engine: { chain: [{ preset: 'freellmapi', protocol: 'openai', baseURL: `${gw3.url}/v1`, model: 'auto:smart', apiKey: 'freellmapi-secret-99' }] } });
+    const pub = publicSettings().engine.chain[0];
+    assert.equal(pub.apiKey, 'free••••••••t-99'); assert.equal(pub.hasKey, true);
+    saveSettings({ engine: { chain: [{ ...pub }] } }); // the form sends the masked key back
+    assert.equal(loadSettings().engine.chain[0].apiKey, 'freellmapi-secret-99');
+    saveSettings({ engine: { chain: [{ ...pub, baseURL: 'http://elsewhere.example/v1' }] } }); // a new address never gets the old key
+    assert.equal(loadSettings().engine.chain[0].apiKey, '');
+    saveSettings({ engine: { chain: [] } });
+    assert.deepEqual(loadSettings().engine.chain, []); assert.deepEqual(publicSettings().engine.chain, []);
+  });
+});
+
+describe('engine chain: more than one fallback, in order', () => {
+  // a model name distinct from the single-fallback tests above, so this block's vision cache starts clean
+  const FB = () => ({ preset: 'lmstudio', protocol: 'openai', baseURL: `${gw2.url}/v1`, model: 'local-qwen-2', apiKey: '' });
+  const CHAIN2 = () => ({ preset: 'freellmapi', protocol: 'openai', baseURL: `${gw3.url}/v1`, model: 'auto:smart', apiKey: 'freellmapi-test-key' });
+  const useChain = () => useGateway({ fallback: FB(), chain: [CHAIN2()] });
+
+  it('both the fallback and the main engine fail → the second chain engine answers', async () => {
+    useChain();
+    gw.state.hook = () => 'empty'; gw2.state.hook = () => 'empty'; gw3.state.hook = () => 'ok';
+    const from3 = gw3.state.calls.length, logs = [];
+    const text = await askText({ purpose: 'shot', label: 's3-1 prompt', system: 'terse', user: 'Reply with exactly: from chain 2', log: m => logs.push(m) });
+    assert.equal(text, 'from chain 2');
+    assert.equal(gw3.state.calls.length - from3, 1);
+    assert.match(logs.join('\n'), /LM Studio \(local\) · local-qwen-2 gave up .* — FreeLLMAPI \(local router\) · auto:smart takes over this call/);
+    console.log(`    ${logs.filter(l => /takes over/.test(l)).map(l => l.trim()).join(' / ')}`);
+  });
+
+  it('circuit breaker: a fallback that fails twice in a row is skipped (not even called) until its pause ends, then tried again', async () => {
+    useChain();
+    gw.state.hook = () => 'empty'; gw3.state.hook = () => 'ok';
+    // two calls where the fallback also fails: its streak reaches 2, the breaker opens
+    gw2.state.hook = () => 'empty';
+    await askText({ purpose: 'shot', system: 's', user: 'x' });
+    const logs2 = [];
+    await askText({ purpose: 'shot', system: 's', user: 'x', log: m => logs2.push(m) });
+    assert.ok(logs2.some(l => /LM Studio \(local\) · local-qwen-2 failed 2 times in a row — skipped for 10 min/.test(l)), logs2.join('\n'));
+    // next call, immediately: the fallback is skipped outright (no HTTP call at all) — straight to the second chain engine
+    const fb2Before = gw2.state.calls.length, logs3 = [];
+    const text = await askText({ purpose: 'shot', system: 's', user: 'x', log: m => logs3.push(m) });
+    assert.equal(text, 'All right, here is a complete answer from the fake gateway.', 'served by the second chain engine');
+    assert.equal(gw2.state.calls.length, fb2Before, 'the fallback was not even called while in its pause');
+    assert.ok(logs3.some(l => /LM Studio \(local\) · local-qwen-2: still in its 10-minute pause — skipped/.test(l)), logs3.join('\n'));
+    // the pause is scaled by HAKAWATI_RETRY_SCALE (0.002) to ~1.2 s here — wait it out, then the fallback is tried again
+    await sleep(1400);
+    gw2.state.hook = () => 'ok';
+    const fb2Before2 = gw2.state.calls.length;
+    const text2 = await askText({ purpose: 'shot', system: 's', user: 'Reply with exactly: fallback is back' });
+    assert.equal(text2, 'fallback is back');
+    assert.equal(gw2.state.calls.length - fb2Before2, 1, 'the fallback got a fresh attempt once its pause ended');
+    console.log('    skipped while in its pause (no HTTP call); tried again once the pause ended');
+  });
+
+  it('a call with pictures skips a blind chain engine and reaches the one after it that can see', async () => {
+    useChain();
+    // blindness is signalled by a normal answer that is not "red" (the probe), not by an HTTP failure
+    gw.state.hook = () => 'empty'; gw2.state.hook = () => 'ok'; gw2.state.blind = true; gw3.state.hook = () => 'ok'; gw3.state.blind = false;
+    const args = { sp: sp0, options: { style: 'photoreal', aspect: '16:9' }, shot: shot0, prompt: 'p', candidates: [png('1344x768'), png('1344x768', 0.1)] };
+    const logs = [];
+    const r = await critiquePictures({ ...args, log: m => logs.push(m) });
+    assert.deepEqual(r.scores, [8, 8]);
+    assert.ok(logs.some(l => /LM Studio \(local\) · local-qwen-2 cannot see pictures/.test(l)), logs.join('\n'));
+    gw2.state.blind = false;
+  });
+});
+
+describe('X-Routed-Via: a local router (FreeLLMAPI-style) names the provider that actually answered', () => {
+  it('is logged and recorded in the usage file', async () => {
+    useGateway();
+    gw.state.hook = () => 'ok'; gw.state.routedVia = 'groq/llama-3.3-70b';
+    const logs = [];
+    const text = await askText({ purpose: 'shot', system: 's', user: 'Reply with exactly: via a free provider', log: m => logs.push(m) });
+    assert.equal(text, 'via a free provider');
+    assert.ok(logs.some(l => /via CodeCraft \(gateway\) · fake-opus → groq\/llama-3\.3-70b/.test(l)), logs.join('\n'));
+    assert.equal(usage().at(-1).routedVia, 'groq/llama-3.3-70b');
+    gw.state.routedVia = null;
+    console.log(`    ${logs.at(-1).trim()}`);
   });
 });

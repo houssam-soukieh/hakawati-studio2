@@ -60,6 +60,11 @@ body.dock-open #main { padding-bottom: calc(80px + min(240px, 45vh)); } /* the o
 .btn.primary { background: linear-gradient(135deg, #f6c35c, #e8873a); color: #1d1205; border: 0; box-shadow: 0 6px 22px rgba(232,135,58,.3); }
 .btn.primary:hover { box-shadow: 0 8px 28px rgba(232,135,58,.45); }
 .btn.big { padding: 12px 22px; font-size: 16px; border-radius: 12px; }
+.btn.small { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+.chain-row { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+.test-all-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+.test-all-table th, .test-all-table td { text-align: start; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.test-all-table th { color: var(--ink2); font-weight: 700; }
 .btn.ghost { background: transparent; }
 .btn.sm { padding: 4px 10px; font-size: 12.5px; border-radius: 8px; }
 .btn.wide { width: 100%; }

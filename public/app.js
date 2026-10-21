@@ -90,7 +90,13 @@ const T = {
     notReviewed: '⚠ not reviewed by the critic — will be judged on the next paint run', templatePrompt: '📝 prompt from template — will be rewritten when the engine is back',
     fallbackTitle: 'Fallback engine', fallbackNote: 'Takes over a call when the engine above keeps failing (empty answers, rate limits, stalls, no connection) — e.g. LM Studio on this PC. A key is optional for a local server.',
     fbNone: 'None', fbKeyPh: 'Key (optional for a local server)',
-    fbOk: f => `↪ Fallback ${f.name || ''}${f.model ? ` (${f.model})` : ''}: “${f.reply ?? ''}”${typeof f.vision === 'boolean' ? ` · Vision ${f.vision ? '✓' : '✗'}` : ''}`, fbFail: f => `↪ Fallback ${f.name || ''}: ✗ ${f.error ?? ''}`,
+    fbOk: f => `↪ Fallback ${f.name || ''}${f.model ? ` (${f.model})` : ''}: “${f.reply ?? ''}”${typeof f.vision === 'boolean' ? ` · Vision ${f.vision ? '✓' : '✗'}` : ''}${f.routedVia ? ` · routed via ${f.routedVia}` : ''}`, fbFail: f => `↪ Fallback ${f.name || ''}: ✗ ${f.error ?? ''}`,
+    chainTitle: 'More engines (tried in order, after the fallback)', chainNote: 'Each one is tried in turn when the ones above keep failing. An engine that fails twice in a row is skipped for 10 minutes, then tried again.',
+    chainAdd: '＋ Add an engine', chainRemove: 'Remove', chainN: n => `Engine ${n}`,
+    refreshModels: '⟳ Refresh', refreshing: '…', refreshed: n => `${n} models`, refreshFailed: '✗ could not reach it',
+    testAll: 'Test all models', testingAll: n => `testing ${n}…`, testAllDone: (ok, n) => `${ok}/${n} answered`,
+    taModel: 'Model', taStatus: 'Status', taSeconds: 'Seconds', taVision: 'Vision', taOk: '✓ OK', taFail: '✗',
+    routedVia: v => `routed via ${v}`,
     advanced: 'Advanced: time limits', idleSeconds: 'Silence inside an answer (s, 0 = off)', firstByteSeconds: 'Wait for an answer to start (s)', callMinutes: 'One call at most (min)', watchdogMinutes: 'Job watchdog (min, 0 = off)',
     ipWeightType: 'IP-Adapter weight type', ipTypes: { 'prompt is more important': 'Prompt is more important', standard: 'Standard', 'style transfer': 'Style transfer' },
     comfyOk: v => `✓ ComfyUI ${v.version} · ${v.gpu || 'GPU?'}${v.vram ? ` ${v.vram} GB` : ''} · ${(v.checkpoints ?? []).length} checkpoints${v.upscalers ? ` · ${v.upscalers.length} upscalers` : ''}`,
@@ -175,7 +181,13 @@ const T = {
     notReviewed: '⚠ لم يراجعها الناقد — ستُقيَّم في جولة الرسم التالية', templatePrompt: '📝 وصف من القالب — سيُعاد كتابته حين يعود المحرك',
     fallbackTitle: 'المحرك الاحتياطي', fallbackNote: 'يتولّى الطلب حين يتكرر فشل المحرك أعلاه (إجابات فارغة، حدود الاستخدام، توقف، انقطاع) — مثل LM Studio على هذا الحاسوب. المفتاح اختياري للخادم المحلي.',
     fbNone: 'بلا', fbKeyPh: 'المفتاح (اختياري للخادم المحلي)',
-    fbOk: f => `↪ الاحتياطي ${f.name || ''}${f.model ? ` (${f.model})` : ''}: «${f.reply ?? ''}»${typeof f.vision === 'boolean' ? ` · الرؤية ${f.vision ? '✓' : '✗'}` : ''}`, fbFail: f => `↪ الاحتياطي ${f.name || ''}: ✗ ${f.error ?? ''}`,
+    fbOk: f => `↪ الاحتياطي ${f.name || ''}${f.model ? ` (${f.model})` : ''}: «${f.reply ?? ''}»${typeof f.vision === 'boolean' ? ` · الرؤية ${f.vision ? '✓' : '✗'}` : ''}${f.routedVia ? ` · عبر ${f.routedVia}` : ''}`, fbFail: f => `↪ الاحتياطي ${f.name || ''}: ✗ ${f.error ?? ''}`,
+    chainTitle: 'محركات إضافية (تُجرَّب بالترتيب، بعد الاحتياطي)', chainNote: 'يُجرَّب كل واحد بدوره حين يتكرر فشل ما قبله. محرك فشل مرتين متتاليتين يُتخطّى 10 دقائق، ثم يُعاد تجربته.',
+    chainAdd: '＋ أضف محركاً', chainRemove: 'إزالة', chainN: n => `المحرك ${n}`,
+    refreshModels: '⟳ تحديث', refreshing: '…', refreshed: n => `${n} نموذجاً`, refreshFailed: '✗ تعذّر الوصول إليه',
+    testAll: 'اختبر كل النماذج', testingAll: n => `اختبار ${n}…`, testAllDone: (ok, n) => `${ok}/${n} أجاب`,
+    taModel: 'النموذج', taStatus: 'الحالة', taSeconds: 'الثواني', taVision: 'الرؤية', taOk: '✓ تمام', taFail: '✗',
+    routedVia: v => `عبر ${v}`,
     advanced: 'متقدم: حدود الوقت', idleSeconds: 'صمت داخل الإجابة (ثانية، 0 = بلا)', firstByteSeconds: 'انتظار بدء الإجابة (ثانية)', callMinutes: 'أقصى مدة للطلب (دقيقة)', watchdogMinutes: 'مراقب المهمة (دقيقة، 0 = بلا)',
     ipWeightType: 'نوع وزن IP-Adapter', ipTypes: { 'prompt is more important': 'الوصف أهم', standard: 'قياسي', 'style transfer': 'نقل الأسلوب' },
     comfyOk: v => `✓ ComfyUI ${v.version} · ${v.gpu || 'GPU?'}${v.vram ? ` ${v.vram} GB` : ''} · النماذج: ${(v.checkpoints ?? []).length}${v.upscalers ? ` · نماذج التكبير: ${v.upscalers.length}` : ''}`,
@@ -1133,6 +1145,9 @@ async function openSettings(section) {
         <label class="f">${t('protocol')}<select id="sProto">${['openai', 'anthropic', 'mock'].map(x => `<option ${x === e.protocol ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
         <label class="f">${t('model')}<input type="text" id="sModel" list="sModels" value="${esc(e.model)}" dir="ltr"><datalist id="sModels"></datalist></label>
       </div>
+      <div class="row"><button type="button" class="btn small" id="sModelRefresh">${t('refreshModels')}</button><button type="button" class="btn small" id="sTestAll" data-which="primary">${t('testAll')}</button><span id="sRefreshOut" class="small muted" role="status"></span></div>
+      <div id="sTestAllOut" class="small muted" role="status" hidden></div>
+      <table id="sTestAllTable" class="test-all-table" hidden><thead><tr><th>${t('taModel')}</th><th>${t('taStatus')}</th><th>${t('taSeconds')}</th><th>${t('taVision')}</th></tr></thead><tbody></tbody></table>
       <label class="f">${t('baseUrl')}<input type="text" id="sBase" value="${esc(e.baseURL)}" dir="ltr" placeholder="https://…"></label>
       <div class="grid2">
         <label class="f">${t('apiKey')}<input type="password" id="sKey" value="" placeholder="${esc(e.hasKey ? t('keepKey', e.apiKey) : t('pasteKey'))}" dir="ltr" autocomplete="off"></label>
@@ -1160,16 +1175,24 @@ async function openSettings(section) {
       <div id="fBox" class="stack" ${fb ? '' : 'hidden'}>
         <div class="grid2">
           <label class="f">${t('protocol')}<select id="fProto">${['openai', 'anthropic'].map(x => `<option ${x === (fb?.protocol ?? 'openai') ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
-          <label class="f">${t('model')}<input type="text" id="fModel" value="${esc(fb?.model ?? '')}" dir="ltr"></label>
+          <label class="f">${t('model')}<input type="text" id="fModel" list="fModels" value="${esc(fb?.model ?? '')}" dir="ltr"><datalist id="fModels"></datalist></label>
         </div>
         <div class="grid2">
           <label class="f">${t('baseUrl')}<input type="text" id="fBase" value="${esc(fb?.baseURL ?? '')}" dir="ltr" placeholder="http://127.0.0.1:1234/v1"></label>
           <label class="f">${t('apiKey')}<input type="password" id="fKey" value="" placeholder="${esc(fb?.hasKey ? t('keepKey', fb.apiKey) : t('fbKeyPh'))}" dir="ltr" autocomplete="off"></label>
         </div>
+        <div class="row"><button type="button" class="btn small" id="fModelRefresh">${t('refreshModels')}</button><button type="button" class="btn small" id="fTestAll" data-which="fallback">${t('testAll')}</button><span id="fRefreshOut" class="small muted" role="status"></span></div>
+        <div id="fTestAllOut" class="small muted" role="status" hidden></div>
+        <table id="fTestAllTable" class="test-all-table" hidden><thead><tr><th>${t('taModel')}</th><th>${t('taStatus')}</th><th>${t('taSeconds')}</th><th>${t('taVision')}</th></tr></thead><tbody></tbody></table>
       </div>
+      <h4 class="sub" id="sChainH">${t('chainTitle')}</h4>
+      <div class="muted small">${t('chainNote')}</div>
+      <div id="sChainList"></div>
+      <button type="button" class="btn small" id="sChainAdd">${t('chainAdd')}</button>
       <div class="row"><button class="btn" id="sTest">${t('test')}</button><span id="sTestOut" class="small muted" role="status"></span></div>
       <div id="sVision" class="small" role="status" hidden></div>
-      <div id="sFbOut" class="small" role="status" hidden></div>`)}
+      <div id="sFbOut" class="small" role="status" hidden></div>
+      <div id="sChainOut" class="small" role="status"></div>`)}
 
       ${sec('pictures', t('pictures'), `
       <div class="note small">${t('picturesNote')}</div>
@@ -1239,7 +1262,8 @@ async function openSettings(section) {
   const form = () => ({
     engine: { preset: v('#sPreset'), protocol: v('#sProto'), baseURL: v('#sBase'), model: v('#sModel'), artModel: v('#sArt'), apiKey: v('#sKey'), temperature: Number($('#sTemp', d).value), concurrency: numOf($('#sConc', d), ENGINE_DEF.concurrency), doctorPasses: numOf($('#sDoc', d), ENGINE_DEF.doctorPasses),
       idleSeconds: numOf($('#sIdle', d), ENGINE_DEF.idleSeconds), firstByteSeconds: numOf($('#sFirst', d), ENGINE_DEF.firstByteSeconds), callMinutes: numOf($('#sCallMin', d), ENGINE_DEF.callMinutes), watchdogMinutes: numOf($('#sWatch', d), ENGINE_DEF.watchdogMinutes),
-      fallback: v('#fPreset') ? { preset: v('#fPreset'), protocol: v('#fProto'), baseURL: v('#fBase'), model: v('#fModel'), apiKey: v('#fKey') } : null },
+      fallback: v('#fPreset') ? { preset: v('#fPreset'), protocol: v('#fProto'), baseURL: v('#fBase'), model: v('#fModel'), apiKey: v('#fKey') } : null,
+      chain: chainState.filter(c => c.model && c.baseURL).map(c => ({ preset: c.preset ?? '', protocol: c.protocol ?? 'openai', baseURL: c.baseURL ?? '', model: c.model ?? '', apiKey: c.apiKey ?? '' })) },
     voice: { ...Object.fromEntries($$('[data-voice]', d).map(x => [x.dataset.voice, x.value])), rate: v('#sRate'), pitch: v('#sPitch'), whisper: { enabled: $('#sWhisper', d).checked, gain: numOf($('#sWhGain', d), wh.gain) } },
     render: { quality: v('#sQuality'), fps: Number(v('#sFps')) },
     image: { engine: $('#sPic .on', d).dataset.v, url: v('#iUrl'), checkpoint: v('#iCkpt'), steps: numOf($('#iSteps', d), 6), cfg: numOf($('#iCfg', d), 2),
@@ -1261,6 +1285,81 @@ async function openSettings(section) {
     $('#fBox', d).hidden = !k;
     if (pr) { $('#fProto', d).value = pr.protocol === 'anthropic' ? 'anthropic' : 'openai'; $('#fBase', d).value = pr.baseURL; $('#fModel', d).value = pr.model; }
   };
+  // -------- further engines (engine.chain): tried in order after the fallback gives up too --------
+  let chainState = Array.isArray(s.engine.chain) ? s.engine.chain.map(c => ({ ...c })) : [];
+  function renderChainList() {
+    $('#sChainList', d).innerHTML = chainState.map((c, i) => `
+      <div class="stack chain-row">
+        <div class="row"><b>${t('chainN', i + 1)}</b><span class="grow"></span><button type="button" class="btn ghost small" data-remove="${i}">${t('chainRemove')}</button></div>
+        <label class="f">${t('preset')}<select data-c="${i}" data-k="preset"><option value="">${t('fbNone')}</option>${fbPresets.map(([k, v]) => `<option value="${k}" ${k === c.preset ? 'selected' : ''}>${esc(styleLabel(v))}</option>`).join('')}</select></label>
+        <div class="grid2">
+          <label class="f">${t('protocol')}<select data-c="${i}" data-k="protocol">${['openai', 'anthropic'].map(x => `<option ${x === (c.protocol ?? 'openai') ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+          <label class="f">${t('model')}<input type="text" data-c="${i}" data-k="model" list="cModels${i}" value="${esc(c.model ?? '')}" dir="ltr"><datalist id="cModels${i}"></datalist></label>
+        </div>
+        <div class="grid2">
+          <label class="f">${t('baseUrl')}<input type="text" data-c="${i}" data-k="baseURL" value="${esc(c.baseURL ?? '')}" dir="ltr" placeholder="http://127.0.0.1:1234/v1"></label>
+          <label class="f">${t('apiKey')}<input type="password" data-c="${i}" data-k="apiKey" value="" placeholder="${esc(c.hasKey ? t('keepKey', c.apiKey) : t('fbKeyPh'))}" dir="ltr" autocomplete="off"></label>
+        </div>
+        <div class="row"><button type="button" class="btn small" data-refresh="${i}">${t('refreshModels')}</button><span class="small muted" id="cOut${i}" role="status"></span></div>
+      </div>`).join('');
+    const box = $('#sChainList', d);
+    box.onchange = ev => {
+      const el = ev.target, i = Number(el.dataset.c);
+      if (Number.isNaN(i)) return;
+      if (el.dataset.k === 'preset') {
+        chainState[i].preset = el.value;
+        const pr = Object.fromEntries(fbPresets)[el.value];
+        if (pr) { chainState[i].protocol = pr.protocol === 'anthropic' ? 'anthropic' : 'openai'; chainState[i].baseURL = pr.baseURL; chainState[i].model = pr.model; renderChainList(); return; }
+      } else chainState[i][el.dataset.k] = el.value;
+    };
+    box.onclick = async ev => {
+      const rm = ev.target.closest('[data-remove]');
+      if (rm) { chainState.splice(Number(rm.dataset.remove), 1); renderChainList(); return; }
+      const rf = ev.target.closest('[data-refresh]');
+      if (rf) { const i = Number(rf.dataset.refresh); await save(); await refreshInto(`chain${i + 1}`, $(`#cModels${i}`, d), $(`#cOut${i}`, d)); }
+    };
+  }
+  renderChainList();
+  $('#sChainAdd', d).onclick = () => { chainState.push({ preset: '', protocol: 'openai', baseURL: '', model: '', apiKey: '' }); renderChainList(); };
+  /** ⟳ Refresh: re-fetch one engine's model list into its datalist (the key it already has on disk, unchanged). */
+  async function refreshInto(which, datalist, out) {
+    out.textContent = t('refreshing');
+    try {
+      const r = await api(`settings/models?which=${which}`);
+      datalist.innerHTML = (r.models ?? []).map(m => `<option value="${esc(m)}">`).join('');
+      out.textContent = t('refreshed', (r.models ?? []).length);
+    } catch { out.textContent = t('refreshFailed'); }
+  }
+  /** "Test all models": one (engine, model) pair at a time, paced — free tiers have per-minute limits. */
+  async function testAllInto(which, models, outEl, tableEl) {
+    outEl.hidden = false; tableEl.hidden = false;
+    const tbody = $('tbody', tableEl); tbody.innerHTML = '';
+    const list = models.slice(0, 25);
+    let ok = 0;
+    for (const [i, m] of list.entries()) {
+      outEl.textContent = t('testingAll', `${i + 1}/${list.length}`);
+      const tr = document.createElement('tr'); tr.innerHTML = `<td dir="ltr">${esc(m)}</td><td>…</td><td></td><td></td>`; tbody.appendChild(tr);
+      try {
+        const r = await api('settings/test-model', { method: 'POST', body: { which, model: m } });
+        if (r.ok) ok++;
+        tr.children[1].textContent = r.ok ? t('taOk') : t('taFail'); tr.children[1].className = r.ok ? 'ok-t' : 'warn-t';
+        tr.children[2].textContent = r.seconds ? fmt(r.seconds) : '';
+        tr.children[3].textContent = typeof r.vision === 'boolean' ? (r.vision ? '✓' : '✗') : '';
+      } catch { tr.children[1].textContent = t('taFail'); tr.children[1].className = 'warn-t'; }
+      if (i < list.length - 1) await new Promise(r => setTimeout(r, 1500)); // free-tier per-minute limits
+    }
+    outEl.textContent = t('testAllDone', ok, list.length);
+  }
+  async function wireExtraTest(prefix, which) {
+    $(`#${prefix}ModelRefresh`, d).onclick = async () => { await save(); await refreshInto(which, $(`#${prefix}Models`, d), $(`#${prefix}RefreshOut`, d)); };
+    $(`#${prefix}TestAll`, d).onclick = async () => {
+      await save();
+      const r = await api(`settings/models?which=${which}`).catch(() => ({ models: [] }));
+      await testAllInto(which, r.models ?? [], $(`#${prefix}TestAllOut`, d), $(`#${prefix}TestAllTable`, d));
+    };
+  }
+  wireExtraTest('s', 'primary');
+  wireExtraTest('f', 'fallback');
   d.onchange = ev => { const el = ev.target; if (el.type === 'number' && el.value !== '') el.value = numOf(el, el.value); }; // show the clamped value
   const criticBox = () => { for (const el of $$('#iCriticBox input', d)) el.disabled = !$('#iCritic', d).checked; };
   $('#iCritic', d).onchange = criticBox; criticBox();
@@ -1273,10 +1372,12 @@ async function openSettings(section) {
   };
   $('#sTest', d).onclick = async () => {
     let raw = null;
-    const out = $('#sTestOut', d), vis = $('#sVision', d), fbOut = $('#sFbOut', d), r = await testInto(out, async () => (raw = await api('settings/test', { method: 'POST' })));
-    const f = raw?.fallback; // the fallback engine's own test, shown even when the main engine failed
+    const out = $('#sTestOut', d), vis = $('#sVision', d), fbOut = $('#sFbOut', d), chOut = $('#sChainOut', d), r = await testInto(out, async () => (raw = await api('settings/test', { method: 'POST' })));
+    const chain = raw?.chain ?? []; // every extra engine's own test, shown even when the main engine failed: chain[0] is the fallback, the rest are engine.chain in order
+    const f = chain[0];
     fbOut.hidden = !f;
     if (f) { fbOut.textContent = f.ok ? t('fbOk', f) : t('fbFail', f); fbOut.className = `small ${f.ok ? 'ok-t' : 'warn-t'}`; }
+    chOut.innerHTML = chain.slice(1).map((c, i) => `<div class="small ${c.ok ? 'ok-t' : 'warn-t'}">${esc(t('chainN', i + 2))}: ${esc(c.ok ? t('fbOk', c) : t('fbFail', c))}</div>`).join('');
     vis.hidden = !r || typeof r.vision !== 'boolean';
     if (!r) return;
     out.textContent = `✓ ${r.model}: “${r.reply}”${r.seconds ? ` (${fmt(r.seconds)} s)` : ''}${r.models?.length ? ` — ${t('modelsAvail', r.models.length)}` : ''}`;

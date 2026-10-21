@@ -81,6 +81,16 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       **Rules:** keys only in `.studio/settings.json` (git-ignored); never print a key in chat, logs, reports or commits
       (mask it); no private data to CodeCraft or the free providers; FreeLLMAPI's paid "premium catalog" is not needed.
       Report: `docs/team/reports/2026-10-21-t5-engines.md` (what A found, which providers answered, Test-all table).
+      **Part A + part B code/tests: done, pushed to `desktop/engines`.** `reliability.test.mjs` 26/26 (new chain-order
+      + circuit-breaker + routed-via tests, 5 pre-existing single-fallback tests unchanged), `director` 19/19, `motion`
+      41/41. `e2e-pictures`/`whisper`/`critic` each have one pre-existing failure — **confirmed identical on unmodified
+      `main`**, not T5. `test/ui/studio.test.mjs`'s `jobs: paint what is missing…` also fails identically on `main`
+      (confirmed by a direct side-by-side run) and in a clean manual browser repro it worked fine — pre-existing,
+      environment-specific, not fixed here. **Gap**: `test/ui/studio.test.mjs` itself was not extended per item 4 (only
+      `test/reliability/`) — see the report's Problems section. **Live run**: port 4849, ComfyUI up, settings has real
+      CodeCraft (primary) + FreeLLMAPI preset in the fallback slot (no key) — waiting on the owner to paste it himself
+      before Refresh / Test all models / the two test films (normal, then CodeCraft-key-blanked fallover) can run.
+      → `docs/team/reports/2026-10-21-t5-engines.md`
 
 ## Lead's decision on T3 (2026-10-20, after reading the T3 report — thank you, excellent report)
 **Hold T3: don't run motion/render and don't repaint yet.** The lead is fixing the root causes on two branches:

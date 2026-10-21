@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { ROOT, PROJECTS, SAFE_ID, readJSON } from './lib/util.mjs';
 import { publicSettings, saveSettings } from './lib/settings.mjs';
-import { testEngine } from './lib/llm.mjs';
+import { testEngine, fetchModels, testOneModel, resetEngineHealth, fallbackEngine, chainEngines } from './lib/llm.mjs';
 import { testImageEngine } from './lib/image.mjs';
 import { listVoices } from './lib/voice.mjs';
 import { STYLES, CAMERAS, TRANSITIONS, SHOT_TYPES, ASPECTS } from './lib/styles.mjs';
@@ -125,8 +125,27 @@ async function api(req, res, url) {
   if (parts[0] === 'events') return subscribe(res);
   if (parts[0] === 'settings') {
     if (parts[1] === 'test' && m === 'POST') { try { return send(res, 200, await testEngine()); } catch (e) { return send(res, 200, { ok: false, error: e.message }); } }
+    // which: 'primary' | 'fallback' | 'chain1', 'chain2', … (engine.chain is 0-indexed, the url is 1-indexed)
+    const engineFor = which => {
+      const { engine } = loadSettings();
+      if (which === 'primary') return engine;
+      if (which === 'fallback') return fallbackEngine(engine);
+      const n = Number(String(which).replace('chain', ''));
+      return Number.isInteger(n) && n >= 1 ? chainEngines(engine)[n - 1] ?? null : null;
+    };
+    if (parts[1] === 'models' && m === 'GET') { // the ⟳ Refresh button: re-fetch one engine's model list (and, for its key, re-read what is saved for it)
+      const e = engineFor(url.searchParams.get('which') ?? 'primary');
+      if (!e) return send(res, 404, { error: 'no such engine' });
+      return send(res, 200, { models: await fetchModels(e) });
+    }
+    if (parts[1] === 'test-model' && m === 'POST') { // "Test all models": one (engine, model) pair at a time, paced by the caller
+      const b = await readBody(req), e = engineFor(b.which ?? 'primary');
+      if (!e) return send(res, 404, { error: 'no such engine' });
+      if (!String(b.model ?? '').trim()) return send(res, 400, { error: 'no model' });
+      return send(res, 200, await testOneModel(e, String(b.model)));
+    }
     if (m === 'GET') return send(res, 200, publicSettings());
-    if (m === 'POST') { saveSettings(await readBody(req)); return send(res, 200, publicSettings()); }
+    if (m === 'POST') { saveSettings(await readBody(req)); resetEngineHealth(); return send(res, 200, publicSettings()); }
   }
   if (parts[0] === 'voices') return send(res, 200, await listVoices());
   if (parts[0] === 'image' && parts[1] === 'test' && m === 'POST') { try { return send(res, 200, await testImageEngine()); } catch (e) { return send(res, 200, { ok: false, error: e.message }); } }

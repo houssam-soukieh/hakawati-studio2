@@ -43,7 +43,7 @@ function answer(call, state) {
 
 export function startFakeGateway({ port = 0, delay = 0 } = {}) {
   const state = {
-    hook: () => 'ok', score: () => null, delay, blind: false,
+    hook: () => 'ok', score: () => null, delay, blind: false, routedVia: null, // set to e.g. 'groq/llama-3.3-70b' to add X-Routed-Via, like FreeLLMAPI
     calls: [], inFlight: 0, maxInFlight: 0, vision: 0, maxVision: 0, closedStalls: 0, openStalls: new Set(),
   };
   const server = http.createServer(async (req, res) => {
@@ -85,7 +85,7 @@ export function startFakeGateway({ port = 0, delay = 0 } = {}) {
     if (mode === '400') { res.writeHead(400, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: { message: 'bad request' } })); return; }
     if (mode === '429') { res.writeHead(429, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: { message: 'slow down' } })); return; }
     if (mode === 'nothing') { stall(); return; }
-    res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
+    res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', ...(state.routedVia && { 'x-routed-via': state.routedVia }) });
     res.flushHeaders();
     if (mode === 'headers') { stall(); return; }
     if (protocol === 'openai') {
