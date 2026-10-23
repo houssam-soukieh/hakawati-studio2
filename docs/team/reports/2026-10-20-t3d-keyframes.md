@@ -87,6 +87,32 @@ guess at via more notes.
 Both shots have now had their checklist-allowed 2 tries. Per the board's own rule ("still failing after 2 → record
 it and go on to T3c with the best you have"), the next move is the owner's call, not an automatic retry loop.
 
+## Fix attempt: lowered the `being` IP-Adapter weight 0.4→0.3 (2026-10-23)
+
+Owner's direction: the sharper-note retry fixed `s2-4`'s framing but not the human-skin issue, so the real lever is
+IP-Adapter pulling "humanness" from the reference portrait, not prompt wording. Lowered `IPA.being.weight` in
+`lib/image.mjs` (0.4→0.3, `IPA.version` bumped 2→3 — a code change, applies to every being, not just Orion) and
+re-ran `s2-3`/`s2-4`.
+
+- **`s2-3`: now PASSES, 7/10.** First round still scored 3/10 ("must be strictly faceless"); round 2 with the
+  lower weight nailed it — critique: "captures the eerie translucent humanoid and the bedroom atmosphere
+  effectively, though the head features remain slightly too defined." **The lowered weight fixed the face.**
+- **`s2-4`: still fails, 5/10.** Critic (after a separate re-judge pass, since the first pass hit token-limit
+  truncation again): "Candidate 3 nails the extreme close-up composition... but the hands unfortunately appear as
+  solid human flesh rather than being woven from glowing cyan-blue light threads." **The lowered weight did not
+  fix the hands.**
+
+This narrows the problem: it's specific to `s2-4`'s extreme-macro hand/wrist framing, not beings in general or
+Orion in general (his face shot now passes). Likely an SDXL base-model bias — hands are a known hard case for
+diffusion models, and an extreme close-up gives the model very little else to anchor "non-human" on besides the
+hand shape itself, which it defaults to rendering as real skin. Not fixed here; not retried a 4th time (now well
+past the checklist's 2-try budget). Two options for whoever picks this up: add an explicit "human skin, human
+flesh, realistic hand anatomy" phrase to this shot's own negative prompt (more targeted than the global being
+negative), or accept `s2-4` as a known limitation and move on — **owner's call**.
+
+**Net so far: 13/14 shots at an acceptable state (12 within the original checklist's judgment, `s2-3` now fixed),
+`s2-4` is the one open item.**
+
 ## Recommendation — owner's call, not acted on further here
 - Do **not** start T3c yet — T3d's own gate ("start T3c when T3d passes its checklist") isn't met.
 - Options: (a) retry `s2-3`/`s2-4` individually with a strong note (`run <id> art --shots s2-3 --note "..."`,

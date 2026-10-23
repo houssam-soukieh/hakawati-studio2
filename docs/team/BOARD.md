@@ -49,9 +49,12 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       **Do not start T3c** until this is resolved — see the report for the full table and options.
       **Retry with a sharper note used up both shots' 2-try allowance**: `s2-3`'s critic was token-limit-truncated
       again (still unverified), `s2-4` improved to 6/10 (framing fixed) but still shows human skin texture on the
-      hands per the critic — likely an IP-Adapter/reference-portrait issue, not a prompt-wording one. Owner's call
-      on how to proceed (lower IP-Adapter weight, redo Orion's reference portrait, wait for CodeCraft, or accept
-      and move to T3c).
+      hands per the critic — likely an IP-Adapter/reference-portrait issue, not a prompt-wording one.
+      **Owner chose: lower the being IP-Adapter weight (0.4→0.3, `lib/image.mjs`, `IPA.version` bumped 2→3).**
+      Result: **`s2-3` now PASSES at 7/10** (the face fix worked). **`s2-4` still fails at 5/10** — hands still
+      render as human flesh; this looks specific to the extreme-macro hand framing (an SDXL hard case), not beings
+      in general. Not retried further (past the 2-try budget). **13/14 shots acceptable, `s2-4` is the one open
+      item** — owner's call on a targeted per-shot negative or accepting it and moving to T3c.
       → `docs/team/reports/2026-10-20-t3d-keyframes.md`
 - [ ] **T3c All-shots video for the teaser — overnight** (merged on `main`: every story shot is real Wan 2.2 video).
       **Start when T3d passes its checklist** — the owner is away from the PC and handed the go/no-go to the lead (2026-10-20); you check the list yourself, no need to wait for him. `git pull`, restart the
