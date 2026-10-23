@@ -56,8 +56,25 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       in general. Not retried further (past the 2-try budget). **13/14 shots acceptable, `s2-4` is the one open
       item** — owner's call on a targeted per-shot negative or accepting it and moving to T3c.
       → `docs/team/reports/2026-10-20-t3d-keyframes.md`
+- [ ] **T3e Close T3d: s2-4 once more, then the video (lead, 2026-10-23).** `git pull` (T5 merged on `main` with the
+      lead's fixes, below). Run the Studio from `E:\hakawati` again (the `E:\hakawati-engines` worktree is no longer
+      needed: `git worktree remove E:\hakawati-engines` after copying anything you want from it).
+      1. `node make.mjs run 2026-10-20-souls-of-the-algorithms---teaser art --shots s2-4 --force` — a frame with only
+         beings now also has `flesh, skin pores, fingernails, knuckles` in its negative (`--force` because a negative
+         change alone does not make a shot stale). One try only.
+      2. `node make.mjs run 2026-10-20-souls-of-the-algorithms---teaser art` — `s1-1`/`s1-2` (template prompts, cut off)
+         repaint from the engine and `s1-5` is re-judged: the picture-prompt and critic token budgets are 8000 now
+         (a thinking model spent the old 2000/3000 before answering).
+      3. Put the 14 keyframes side by side for the owner (a contact sheet is fine) and **wait for his OK** — the
+         critic's 5–6 on Gemini Flash is a stricter, different judge than before; his eyes decide. Then T3c.
+      Report: append to the T3d report.
+      4. **Video runs are 3 s now** (owner, 2026-10-23): one Wan run ≤ 73 frames by default; a settings file that still
+         holds the old 5 s moves to 3 s by itself (Settings → Motion shows it). Shots of 4–4.8 s = one run stretched
+         ≤ ×1.6; 5 s = two runs of 61; 8 s = two runs of 73 stretched ×1.32. **Never single 8-s runs.** Before T3c, answer
+         the open question about the bad 8-s fox clip: compare the RAW 832×480 Wan frames with the upscaled ones (same
+         frame numbers) — blue cast already in the raw → Wan at 193 frames; raw clean → a bug in the chunked upscale.
 - [ ] **T3c All-shots video for the teaser — overnight** (merged on `main`: every story shot is real Wan 2.2 video).
-      **Start when T3d passes its checklist** — the owner is away from the PC and handed the go/no-go to the lead (2026-10-20); you check the list yourself, no need to wait for him. `git pull`, restart the
+      **Start after T3e, on the owner's OK of the keyframes.** `git pull`, restart the
       Studio and ComfyUI. Settings → Motion: engine **Wan 2.2**, coverage **All shots**, upscale **on** (4x-UltraSharp),
       max stretch 1.6. Check free disk on E: (≥ 20 GB). Then
       `node make.mjs run 2026-10-20-souls-of-the-algorithms---teaser motion` (≈ 3–3.5 h; the log prints the estimate and
@@ -66,7 +83,10 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       s/frame, render, total), VRAM/RAM peaks, any failed clip, colour jumps at chained joins, and how the motion looks
       (people, beings as light, camera). Attach 2–3 short clips or GIFs for the owner if possible.
 
-- [x] **T5 Engine chain + FreeLLMAPI (owner's request, 2026-10-21) — code, no GPU.** Never interrupt a running T3c job:
+- [x] **T5 Engine chain + FreeLLMAPI (owner's request, 2026-10-21) — code, no GPU.** **Merged on `main` by the lead
+      (2026-10-23)** with three fixes: a 401/402/403/404 (e.g. CodeCraft "Account is suspended") hands the call to the
+      chain at once instead of failing it; the circuit breaker also skips the PRIMARY engine during its pause; token
+      budgets 8000 for picture prompts and the critic. `test/critic/e2e.mjs` Windows path fixed (`fileURLToPath`). Never interrupt a running T3c job:
       do this in a separate worktree (`git worktree add E:\hakawati-engines -b desktop/engines origin/main`), run the
       Studio from there on another port (`set HAKAWATI_PORT=4849`) and push the branch; the lead reviews and merges.
       **A. Install FreeLLMAPI** (MIT, github.com/tashfeenahmed/freellmapi → Releases → the Windows `.exe`). Tell the owner

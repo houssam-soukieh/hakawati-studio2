@@ -473,6 +473,24 @@ describe('engine chain: more than one fallback, in order', () => {
     console.log('    skipped while in its pause (no HTTP call); tried again once the pause ended');
   });
 
+  it('a suspended main engine (HTTP 403) is not asked again: the chain answers at once; twice → the main engine is skipped', async () => {
+    resetEngineHealth();
+    useChain();
+    gw.state.hook = () => '403'; gw2.state.hook = () => 'ok';
+    const from = gw.state.calls.length, logs = [];
+    assert.equal(await askText({ purpose: 'shot', system: 's', user: 'Reply with exactly: chain took it', log: m => logs.push(m) }), 'chain took it');
+    assert.equal(gw.state.calls.length - from, 1, 'one call to the suspended engine, no retries');
+    assert.ok(!logs.some(l => /retry \d\/6/.test(l)), logs.join('\n'));
+    assert.match(logs.join('\n'), /HTTP 403: .*Account is suspended.*\) — LM Studio \(local\) · local-qwen-2 takes over this call/);
+    await askText({ purpose: 'shot', system: 's', user: 'x' }); // second failure in a row: the breaker opens on the main engine
+    const from2 = gw.state.calls.length, logs2 = [];
+    assert.equal(await askText({ purpose: 'shot', system: 's', user: 'Reply with exactly: straight to the chain', log: m => logs2.push(m) }), 'straight to the chain');
+    assert.equal(gw.state.calls.length, from2, 'the main engine is not even called during its pause');
+    assert.match(logs2.join('\n'), /CodeCraft \(gateway\) · fake-opus: still in its 10-minute pause — skipped\) — LM Studio/);
+    resetEngineHealth();
+    console.log(`    ${logs2.at(-1).trim()}`);
+  });
+
   it('a call with pictures skips a blind chain engine and reaches the one after it that can see', async () => {
     useChain();
     // blindness is signalled by a normal answer that is not "red" (the probe), not by an HTTP failure

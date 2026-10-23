@@ -83,6 +83,7 @@ export function startFakeGateway({ port = 0, delay = 0 } = {}) {
       res.on('close', () => { state.openStalls.delete(res); state.closedStalls++; });
     };
     if (mode === '400') { res.writeHead(400, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: { message: 'bad request' } })); return; }
+    if (mode === '403') { res.writeHead(403, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: { message: 'Account is suspended' } })); return; }
     if (mode === '429') { res.writeHead(429, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: { message: 'slow down' } })); return; }
     if (mode === 'nothing') { stall(); return; }
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', ...(state.routedVia && { 'x-routed-via': state.routedVia }) });

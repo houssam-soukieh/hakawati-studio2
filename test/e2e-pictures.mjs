@@ -7,7 +7,7 @@
 //    and stop → POST /queue {delete} + POST /interrupt.
 // 3. Looks: human portraits are identity references cropped to the face (IP-Adapter 0.55, 'prompt is more important',
 //    end_at 0.85), beings are painted as non-human entities (being portrait prompt, human terms in the negative, their
-//    portrait whole as 'style transfer' at 0.4), the content-safety terms are always in the negative, old settings move
+//    portrait whole as 'style transfer' at 0.3), the content-safety terms are always in the negative, old settings move
 //    to the new IP-Adapter defaults, and an IPAdapter without 'style transfer' paints beings without a reference.
 // 4. Makes the whole film from docs/test-story.txt (photoreal) with `make.mjs` and checks cast portraits, every shot's
 //    picture + thumbnail + clip, that the clips show the picture (not the dark fallback), the final MP4, and that a
@@ -197,7 +197,7 @@ try {
   ok(comp.includes(bible.orion) && !/woman|chest|skin/.test(comp) && /hair-thin threads/.test(comp) && shared.indexOf(bible.kira) < shared.indexOf(bible.orion),
     'a being-only shot prompt keeps the bible look and drops human anatomy phrases; a shared frame puts the human first', comp.slice(bible.orion.length, bible.orion.length + 100));
 
-  // IP-Adapter: a human's reference is the face, 0.55 'prompt is more important'; a being's is whole, 0.4 'style transfer'
+  // IP-Adapter: a human's reference is the face, 0.55 'prompt is more important'; a being's is whole, 0.3 'style transfer'
   await img.paint({ prompt: 'kira at 3 am, phone glow, extreme close-up', negative: negK, aspect: '16:9', seed: 23, reference: kiraR.file, refKind: 'human', label: 'kira-shot' });
   const gh = fake.state.prompts.at(-1).prompt, uh = fake.state.uploads.at(-1), faceSize = pngSize(fs.readFileSync(uploaded(fake, uh))), kiraSize = pngSize(fs.readFileSync(kiraR.file));
   ok(faceSize && faceSize.w === faceSize.h && faceSize.w === Math.trunc(Math.min(kiraSize.w, kiraSize.h) * 0.6 / 2) * 2 && faceSize.w < kiraSize.w,
@@ -206,8 +206,8 @@ try {
     'IP-Adapter for a human: weight 0.55, “prompt is more important”, end_at 0.85; the shot’s negative is used', `${gh['12'].inputs.weight} · ${gh['12'].inputs.weight_type} · ${gh['12'].inputs.end_at}`);
   await img.paint({ prompt: 'orion bows', negative: negO, aspect: '16:9', seed: 24, reference: orionR.file, refKind: 'being', label: 'orion-shot' });
   const gb = fake.state.prompts.at(-1).prompt, ub = fake.state.uploads.at(-1);
-  ok(gb['12'].inputs.weight === 0.4 && gb['12'].inputs.weight_type === 'style transfer' && gb['12'].inputs.end_at === 0.85 && fs.readFileSync(uploaded(fake, ub)).equals(fs.readFileSync(orionR.file)) && gb['3'].inputs.text.includes('realistic person'),
-    'IP-Adapter for a being: its whole portrait, weight 0.4, “style transfer”; its negative carries the human terms', `${gb['12'].inputs.weight} · ${gb['12'].inputs.weight_type}`);
+  ok(gb['12'].inputs.weight === 0.3 && gb['12'].inputs.weight_type === 'style transfer' && gb['12'].inputs.end_at === 0.85 && fs.readFileSync(uploaded(fake, ub)).equals(fs.readFileSync(orionR.file)) && gb['3'].inputs.text.includes('realistic person'),
+    'IP-Adapter for a being: its whole portrait, weight 0.3, “style transfer”; its negative carries the human terms', `${gb['12'].inputs.weight} · ${gb['12'].inputs.weight_type}`);
   const run4 = fake.state.done.filter(d => d.ipadapter).slice(-2);
   ok(run4.length === 2 && run4[0].ipadapter.end_at === 0.85 && run4[1].ipadapter.weight_type === 'style transfer' && run4.every(d => d.ok && /nsfw/.test(d.negative)), 'the fake ran both graphs: IPAdapter end_at 0.85, the negative with the safety terms');
 

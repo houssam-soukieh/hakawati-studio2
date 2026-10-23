@@ -323,7 +323,7 @@ test('picture prompts: beings are marked for the writer and never get human anat
   assert.ok(shared.indexOf(KIRA.look) === 0 && shared.indexOf(ORION.look) > 0, shared);
   // the negatives and the reference choice for the same frames
   const sp = beingSp(), base = 'text, logo';
-  assert.match(prompts.shotNegative(sp, beingShot(), base), /^text, logo, human face, human skin, realistic person, woman, man, body, torso, nude, cleavage, facial features, nose, nostrils, lips, mouth, eyebrows, human eyes, two people, duplicate, twins, clone, multiple figures$/);
+  assert.match(prompts.shotNegative(sp, beingShot(), base), /^text, logo, human face, human skin, realistic person, woman, man, body, torso, nude, cleavage, flesh, skin pores, fingernails, knuckles, facial features, nose, nostrils, lips, mouth, eyebrows, human eyes, two people, duplicate, twins, clone, multiple figures$/);
   // a faceless humanoid being: a weighted blank head after its look (shots and portrait); with a human in the frame the
   // features stay out of the negative (the human keeps a face)
   assert.match(prompt, /flows from a phone screen, otherworldly entity, \(smooth blank featureless oval head like frosted glass:1\.3\)/);

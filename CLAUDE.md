@@ -46,9 +46,17 @@ local ComfyUI, or animated SVG) → motion (camera / parallax / I2V) → frame-e
   (weighted hint + facial features in the negative when no human is in the frame) and shots painted from the offline
   template repaint from the engine's prompt once it answers again (`promptSource: 'template'`). The owner is away from the
   PC and handed the go/no-go to the lead: board **T3d** (finish keyframes, checklist) → **T3c** (all-shots video overnight).
+- **2026-10-23: CodeCraft is SUSPENDED** (`HTTP 403 Account is suspended`). Text engine now **FreeLLMAPI** (desktop app,
+  `http://127.0.0.1:31415/v1`, model `auto:smart`, owner's provider keys inside it — currently one free Google Gemini key
+  (vision) + Groq (text only)); CodeCraft kept in the chain in case it comes back. T5 merged: `engine.chain` (fallback +
+  more engines in order), circuit breaker (2 failures → skipped 10 min, the primary too), 401/403 → next engine at once,
+  `X-Routed-Via` logged, Settings ⟳ Refresh / model list / Test all models. Bottleneck: the critic's vision calls on one
+  free Gemini key (daily quota) → a second **vision-capable** free key behind FreeLLMAPI is the real fix.
 - **Owner's direction (2026-10-20): every story shot must be real video (Wan 2.2), not a still + camera move** —
   **Done (merged 2026-10-20):** `video.coverage` 'all' (default) | 'marked'; each clip is exactly the shot's length
-  (≤5 s one Wan run; ≤8 s one run stretched ≤1.6× with ffmpeg minterpolate; longer → chained runs from the last frame);
+  (one Wan run ≤ `video.seconds`, **default 3 s = 73 frames since 2026-10-23** — the owner's tests: 2–3 s runs clean, 8 s
+  single runs (193 frames, past the model's 121) fall apart; up to ×1.6 one run stretched with ffmpeg minterpolate;
+  longer → chained runs from the last frame);
   upscale in separate 12-frame ComfyUI jobs (4x-UltraSharp → output size ×1.15, lanczos fallback); per-PC measured
   rates and a time estimate in the log; one failed clip doesn't stop the night; resumes per Wan run. Estimates on the
   3060 Ti: teaser (14 shots) ≈ 3–3.5 h, pilot (40 shots) ≈ 11–12 h (≈ 7 h with `upscaler: 'lanczos'`).

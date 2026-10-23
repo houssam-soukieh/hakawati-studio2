@@ -21,7 +21,7 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { startFakeComfy } from './fake-comfy-motion.mjs';
 import { ROOT, STUDIO, PROJECTS, readJSON, writeJSON } from '../../lib/util.mjs';
-import { DEFAULTS } from '../../lib/settings.mjs';
+import { DEFAULTS, loadSettings } from '../../lib/settings.mjs';
 import { createProject, loadProject, saveProject, allShots, fileOf } from '../../lib/project.mjs';
 import { runSteps, shotStatus } from '../../lib/pipeline.mjs';
 import { buildTimeline } from '../../lib/timeline.mjs';
@@ -133,7 +133,7 @@ try {
   p = loadProject(p.id);
   Object.assign(p.screenplay.scenes.flatMap(sc => sc.shots).find(s => s.id === B), { motion: 2, camera: 'static' });
   saveProject(p);
-  settings({}, { engine: 'wan22', coverage: 'marked', depth: true, upscale: false }); // only the motion-2 shot; Wan's own size
+  settings({}, { engine: 'wan22', coverage: 'marked', depth: true, upscale: false, seconds: 5 }); // only the motion-2 shot; Wan's own size; one run (no stretch: the barcodes must survive, stretching is checked in e)
   await runSteps(p.id, ['motion'], { log });
   p = loadProject(p.id);
   tl = buildTimeline(p, 30);
@@ -180,11 +180,21 @@ try {
 
   // ------------------------------------------------------------ e: every story shot is video, as long as its shot
   const S = video => ({ video, image: {}, render: {} });
-  const v4 = videoSettings(S({ seconds: 4 })), v5 = videoSettings(S({}));
+  const v4 = videoSettings(S({ seconds: 4 })), v5 = videoSettings(S({ seconds: 5 })), v3 = videoSettings(S({}));
   const plans = Object.fromEntries([[4, v5], [5.8, v4], [7, v4], [8, v5], [9, v5], [20, v5]].map(([d, v]) => [`${d}s/${v.seconds}`, clipPlan(d, v)]));
   check('e  clip plan: within one run → trimmed; ≤ ×1.6 → one run stretched; beyond → chained runs (4k+1 frames, ≤ 121 each)',
     JSON.stringify(plans['4s/5'].runs) === '[97]' && plans['5.8s/4'].runs.length === 1 && plans['5.8s/4'].stretch > 1.4 && plans['7s/4'].runs.length === 2 && plans['7s/4'].raw >= plans['7s/4'].need
     && plans['8s/5'].runs.length === 1 && plans['9s/5'].runs.length === 2 && Object.values(plans).every(x => x.runs.every(n => n <= 121 && (n - 1) % 4 === 0) && x.stretch <= 1.6), Object.fromEntries(Object.entries(plans).map(([k, x]) => [k, `${x.runs.join('+')}→${x.need}${x.stretch > 1 ? ` ×${x.stretch}` : ''}`])));
+  const p3 = Object.fromEntries([2, 3, 4, 5, 8].map(d => [`${d}s`, clipPlan(d, v3)]));
+  check('e  default run length 3 s: ≤ 73 frames per Wan run; 5 s → 2 runs; 8 s → 2 runs stretched ≤ 1.6',
+    v3.seconds === 3 && Object.values(p3).every(x => x.runs.every(n => n <= 73) && x.stretch <= 1.6 && x.raw * x.stretch >= x.need - 1)
+    && p3['2s'].runs.length === 1 && p3['3s'].runs.length === 1 && p3['5s'].runs.length === 2 && p3['8s'].runs.length === 2,
+    Object.fromEntries(Object.entries(p3).map(([k, x]) => [k, `${x.runs.join('+')}→${x.need}${x.stretch > 1 ? ` ×${x.stretch}` : ''}`])));
+  const saved = readJSON(SETTINGS, {});
+  writeJSON(SETTINGS, { ...saved, video: { ...DEFAULTS.video, seconds: 5, v: undefined } }); const old = loadSettings().video.seconds;
+  writeJSON(SETTINGS, { ...saved, video: { ...DEFAULTS.video, seconds: 5 } }); const chosen = loadSettings().video.seconds;
+  writeJSON(SETTINGS, saved);
+  check('e  settings: a file with the old default (5 s, no version) moves to 3 s; 5 s chosen on today\'s settings stays', old === 3 && chosen === 5, { old, chosen });
   check('e  wantsClip: coverage "all" → every story shot, "marked" → motion 2 only, title/end and engine off → never',
     wantsClip({ kind: 'shot', motion: 1 }, S({ engine: 'wan22' })) && wantsClip({ kind: 'shot' }, S({ engine: 'wan22' })) && !wantsClip({ kind: 'title' }, S({ engine: 'wan22' })) && !wantsClip({ kind: 'end' }, S({ engine: 'wan22' }))
     && !wantsClip({ kind: 'shot', motion: 1 }, S({ engine: 'wan22', coverage: 'marked' })) && wantsClip({ kind: 'shot', motion: 2 }, S({ engine: 'wan22', coverage: 'marked' })) && !wantsClip({ kind: 'shot', motion: 2 }, S({ engine: 'none' })));

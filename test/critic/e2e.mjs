@@ -13,6 +13,7 @@ import '../sandbox.mjs'; // first: settings and projects in a temp folder, never
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import { STUDIO, ROOT, writeJSON } from '../../lib/util.mjs';
 import { DEFAULTS } from '../../lib/settings.mjs';
@@ -23,7 +24,7 @@ import { runSteps, shotStatus } from '../../lib/pipeline.mjs';
 import { closeBrowser } from '../../lib/render.mjs';
 
 const LLM_PORT = 48771, COMFY_PORT = 48772;
-const here = path.dirname(new URL(import.meta.url).pathname);
+const here = path.dirname(fileURLToPath(import.meta.url)); // not URL.pathname: '/E:/…' on Windows
 const SETTINGS = path.join(STUDIO, 'settings.json');
 const saved = fs.existsSync(SETTINGS) ? fs.readFileSync(SETTINGS) : null;
 const kids = [];

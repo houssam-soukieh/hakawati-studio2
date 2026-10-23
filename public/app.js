@@ -78,7 +78,7 @@ const T = {
     candidates: 'Pictures to choose from (1–4)', critic: 'Picture critic', minScore: 'Lowest accepted score (1–10)', maxRounds: 'Repaint rounds (1–3)', upscaler: 'Upscaler (empty = none)',
     criticNote: 'The critic uses the text engine with vision: it looks at the candidate pictures, keeps the best one and repaints any picture that scores below the threshold.',
     motionTitle: 'Motion (image to video)', motionNote: 'With Wan 2.2 on, every story shot becomes a real video clip exactly as long as the shot (longer shots: slowed with motion interpolation, then chained runs); title and end cards stay stills. On an 8 GB card a clip takes minutes — plan whole films as overnight runs; the log estimates the time before it starts.',
-    videoOff: 'Off', videoWan: 'Wan 2.2 (TI2V 5B)', unet: 'Video model (UNet)', clipModel: 'Text encoder (CLIP)', vae: 'VAE', clipSeconds: 'Longest single Wan run (s, ≤ 5)', clipFps: 'Clip frames per second',
+    videoOff: 'Off', videoWan: 'Wan 2.2 (TI2V 5B)', unet: 'Video model (UNet)', clipModel: 'Text encoder (CLIP)', vae: 'VAE', clipSeconds: 'Longest single Wan run (s; 3 recommended, ≤ 5) — longer shots chain runs', clipFps: 'Clip frames per second',
     depth: '2.5D parallax for still shots (from a depth map)',
     coverage: 'Which shots become video', coverageAll: 'Every story shot', coverageMarked: 'Only shots marked “Image to video”',
     upscaleClips: 'Enlarge clips to the film size (4x-UltraSharp in ComfyUI; ffmpeg if it is missing)', clipUpscaler: 'Upscale model', clipUpscalerPh: 'auto (4x-UltraSharp) — or “lanczos” for the fast one',
@@ -169,7 +169,7 @@ const T = {
     candidates: 'عدد الصور المرشّحة (1–4)', critic: 'ناقد الصور', minScore: 'أدنى درجة مقبولة (1–10)', maxRounds: 'جولات إعادة الرسم (1–3)', upscaler: 'نموذج التكبير (فارغ = بلا تكبير)',
     criticNote: 'يستعين الناقد بمحرك النصوص القادر على الرؤية: يقارن الصور المرشّحة ويختار أفضلها، ويعيد رسم كل صورة تقل درجتها عن الحد الأدنى.',
     motionTitle: 'الحركة (من صورة إلى فيديو)', motionNote: 'حين يعمل Wan 2.2 تصير كل لقطة من الحكاية مقطع فيديو حقيقياً بطول اللقطة تماماً (اللقطات الأطول: إبطاء بالاستيفاء الحركي ثم تشغيلات متسلسلة)، وتبقى بطاقتا العنوان والنهاية ثابتتين. على بطاقة 8 GB يأخذ المقطع دقائق — اجعل الأفلام الكاملة عملاً ليلياً؛ يقدّر السجل الوقت قبل البدء.',
-    videoOff: 'معطّلة', videoWan: 'Wan 2.2 (TI2V 5B)', unet: 'نموذج الفيديو (UNet)', clipModel: 'مُرمِّز النص (CLIP)', vae: 'VAE', clipSeconds: 'أطول تشغيل Wan واحد (ثانية، ≤ 5)', clipFps: 'إطارات المقطع في الثانية',
+    videoOff: 'معطّلة', videoWan: 'Wan 2.2 (TI2V 5B)', unet: 'نموذج الفيديو (UNet)', clipModel: 'مُرمِّز النص (CLIP)', vae: 'VAE', clipSeconds: 'أطول تشغيل Wan واحد (ثانية؛ يُنصح بـ 3، ≤ 5) — اللقطات الأطول تُوصَل من عدة تشغيلات', clipFps: 'إطارات المقطع في الثانية',
     depth: 'عمق 2.5D للّقطات الثابتة (من خريطة العمق)',
     coverage: 'اللقطات التي تصير فيديو', coverageAll: 'كل لقطات الحكاية', coverageMarked: 'المعلَّمة «فيديو من الصورة» فقط',
     upscaleClips: 'تكبير المقاطع إلى مقاس الفيلم (4x-UltraSharp في ComfyUI، أو ffmpeg إن لم يوجد)', clipUpscaler: 'نموذج التكبير', clipUpscalerPh: 'تلقائي (4x-UltraSharp) — أو «lanczos» للسريع',
@@ -230,7 +230,7 @@ const S = {
 // Defaults for settings keys the server may not send yet (POST /api/settings saves whatever it gets).
 const IMAGE_DEF = { candidates: 2, critic: true, minScore: 7, maxRounds: 2, upscaler: '', ipWeight: 0.55, ipWeightType: 'prompt is more important' };
 const IP_TYPES = ['prompt is more important', 'standard', 'style transfer'];
-const VIDEO_DEF = { engine: 'none', coverage: 'all', upscale: true, upscaler: '', maxStretch: 1.6, unet: 'wan2.2_ti2v_5B_fp16.safetensors', clip: 'umt5_xxl_fp8_e4m3fn_scaled.safetensors', vae: 'wan2.2_vae.safetensors', steps: 20, cfg: 5, fps: 24, seconds: 5, depth: true };
+const VIDEO_DEF = { engine: 'none', coverage: 'all', upscale: true, upscaler: '', maxStretch: 1.6, unet: 'wan2.2_ti2v_5B_fp16.safetensors', clip: 'umt5_xxl_fp8_e4m3fn_scaled.safetensors', vae: 'wan2.2_vae.safetensors', steps: 20, cfg: 5, fps: 24, seconds: 3, depth: true };
 const ENGINE_DEF = { concurrency: 2, doctorPasses: 2, idleSeconds: 90, firstByteSeconds: 300, callMinutes: 12, watchdogMinutes: 20 };
 const LMSTUDIO = { label: 'LM Studio (local)', labelAr: 'LM Studio (محلي)', protocol: 'openai', baseURL: 'http://127.0.0.1:1234/v1', model: '' };
 const picturesOn = () => S.settings?.image?.engine === 'comfyui';
@@ -1373,7 +1373,7 @@ async function openSettings(section) {
   $('#sTest', d).onclick = async () => {
     let raw = null;
     const out = $('#sTestOut', d), vis = $('#sVision', d), fbOut = $('#sFbOut', d), chOut = $('#sChainOut', d), r = await testInto(out, async () => (raw = await api('settings/test', { method: 'POST' })));
-    const chain = raw?.chain ?? []; // every extra engine's own test, shown even when the main engine failed: chain[0] is the fallback, the rest are engine.chain in order
+    const chain = raw?.chain ?? (raw?.fallback ? [raw.fallback] : []); // every extra engine's own test, shown even when the main engine failed: chain[0] is the fallback, the rest are engine.chain in order
     const f = chain[0];
     fbOut.hidden = !f;
     if (f) { fbOut.textContent = f.ok ? t('fbOk', f) : t('fbFail', f); fbOut.className = `small ${f.ok ? 'ok-t' : 'warn-t'}`; }
