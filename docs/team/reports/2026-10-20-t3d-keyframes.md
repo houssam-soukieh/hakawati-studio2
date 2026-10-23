@@ -65,6 +65,28 @@ with different (possibly stricter, possibly just differently-worded) judgment �
 the *quality* of this chain's output depends heavily on which model actually answers. Not confirmed without a
 side-by-side CodeCraft run once it's unsuspended.
 
+## Retry with a sharper note (2026-10-23) — this used up the checklist's "2 tries per shot" allowance
+
+`run <id> art --shots s2-3,s2-4 --note "Orion is never human, anywhere in frame: … no human skin texture, no
+visible muscle or bone, no realistic human limbs anywhere …"` (strong, explicit, named exactly what was wrong).
+
+- **`s2-3`**: critic's answer was token-limit-truncated **again** (2/2 attempts now) — still **unreviewed**, no
+  score. Can't confirm whether the sharper note fixed the humanized face; needs a human look at the PNG.
+- **`s2-4`**: improved to **6/10** — framing is now correct (focused on wrists, per the note), but the critique
+  still says explicitly: **"the hands remain too human in texture and anatomy; they must be entirely constructed
+  from the glowing cyan threads … with no solid human skin visible."** The sharper note fixed the *composition*
+  but not the *material* — SDXL (likely pulled by IP-Adapter's reference-portrait style transfer) keeps defaulting
+  to human skin texture on hand-shaped silhouettes regardless of how explicit the text prompt is.
+
+**This is probably not a prompt-wording problem any more.** Two real next levers, neither tried here: (a) lower
+Orion's IP-Adapter weight for this shot type so less of the reference portrait's "humanness" transfers onto limbs,
+or (b) regenerate Orion's reference portrait itself to read unambiguously non-human at the source, since IP-Adapter
+is pulling consistency from it. Both are judgment calls for whoever owns the art pipeline next, not something to
+guess at via more notes.
+
+Both shots have now had their checklist-allowed 2 tries. Per the board's own rule ("still failing after 2 → record
+it and go on to T3c with the best you have"), the next move is the owner's call, not an automatic retry loop.
+
 ## Recommendation — owner's call, not acted on further here
 - Do **not** start T3c yet — T3d's own gate ("start T3c when T3d passes its checklist") isn't met.
 - Options: (a) retry `s2-3`/`s2-4` individually with a strong note (`run <id> art --shots s2-3 --note "..."`,
