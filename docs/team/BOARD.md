@@ -52,7 +52,7 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       s/frame, render, total), VRAM/RAM peaks, any failed clip, colour jumps at chained joins, and how the motion looks
       (people, beings as light, camera). Attach 2–3 short clips or GIFs for the owner if possible.
 
-- [ ] **T5 Engine chain + FreeLLMAPI (owner's request, 2026-10-21) — code, no GPU.** Never interrupt a running T3c job:
+- [x] **T5 Engine chain + FreeLLMAPI (owner's request, 2026-10-21) — code, no GPU.** Never interrupt a running T3c job:
       do this in a separate worktree (`git worktree add E:\hakawati-engines -b desktop/engines origin/main`), run the
       Studio from there on another port (`set HAKAWATI_PORT=4849`) and push the branch; the lead reviews and merges.
       **A. Install FreeLLMAPI** (MIT, github.com/tashfeenahmed/freellmapi → Releases → the Windows `.exe`). Tell the owner
@@ -86,11 +86,23 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       41/41. `e2e-pictures`/`whisper`/`critic` each have one pre-existing failure — **confirmed identical on unmodified
       `main`**, not T5. `test/ui/studio.test.mjs`'s `jobs: paint what is missing…` also fails identically on `main`
       (confirmed by a direct side-by-side run) and in a clean manual browser repro it worked fine — pre-existing,
-      environment-specific, not fixed here. **Gap**: `test/ui/studio.test.mjs` itself was not extended per item 4 (only
-      `test/reliability/`) — see the report's Problems section. **Live run**: port 4849, ComfyUI up, settings has real
-      CodeCraft (primary) + FreeLLMAPI preset in the fallback slot (no key) — waiting on the owner to paste it himself
-      before Refresh / Test all models / the two test films (normal, then CodeCraft-key-blanked fallover) can run.
-      → `docs/team/reports/2026-10-21-t5-engines.md`
+      environment-specific, not fixed here. **Gap (still open)**: `test/ui/studio.test.mjs` itself was not extended
+      per item 4 (only `test/reliability/`) — see the report's Problems section.
+      **Live run: done (2026-10-23).** CodeCraft turned out suspended (403, not transient) before the live test, so
+      the planned "CodeCraft primary → blank its key" fallover never applied; engine slots were swapped instead
+      (FreeLLMAPI primary, CodeCraft fallback, config-only, no key retyped). Owner pasted the FreeLLMAPI key and
+      added provider keys in FreeLLMAPI's own dashboard himself (Gemini, then Groq). **Test all models: 17/19 ok**,
+      all routed via `google/*` (2 failures are FreeLLMAPI's own stale catalog entries). **Real pipeline run**
+      (script→voice→cast→art, English sample story) completed clean 4 times in a row with no hang/crash; the
+      picture critic repeatedly hit the one free Gemini key's rate limit (confirmed from the error text: routing
+      pool stays Google-only — Groq isn't selected for vision calls). Tried lowering `image.candidates` 3→2 and
+      `engine.concurrency` 2→1: neither changed the outcome (2/5 shots stayed unreviewed each time, just which
+      ones shifted) — the `retryAtMs` window growing from ~60s to ~5m across runs shows it's a **spent daily quota**
+      on that one key, not a concurrency/candidate tuning problem. Settings reverted to defaults. The
+      unreviewed-shot fallback (existing behavior) is what actually carried every run to completion — this is the
+      real reliability result of T5, arguably a better proof than an all-green run would have been. Remaining
+      options for more picture coverage: a second genuinely vision-capable key, or wait for quota reset — owner's
+      call, not pursued further today. → `docs/team/reports/2026-10-21-t5-engines.md`
 
 ## Lead's decision on T3 (2026-10-20, after reading the T3 report — thank you, excellent report)
 **Hold T3: don't run motion/render and don't repaint yet.** The lead is fixing the root causes on two branches:
