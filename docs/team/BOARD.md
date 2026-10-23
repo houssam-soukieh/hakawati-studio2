@@ -42,6 +42,12 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
       report and go on to T3c with the best you have (do not block the night on one shot).
       Report: `docs/team/reports/2026-10-20-t3d-keyframes.md` (scores per shot, which repainted, the Orion face result,
       s/picture); then start T3c in the same session.
+      **2026-10-23 run (CodeCraft still suspended, owner directed FreeLLMAPI instead): checklist NOT passed.**
+      14/14 shots drawn, no crash, but nothing scored ≥7 and two Orion shots explicitly fail the checklist
+      (`s2-3` "facial features are overly humanized", `s2-4` "limbs are rendered as realistic human flesh").
+      3 calls hit token-limit truncation (`s1-1`/`s1-2` fell back to offline template, `s1-5` critic unreviewed).
+      **Do not start T3c** until this is resolved — see the report for the full table and options.
+      → `docs/team/reports/2026-10-20-t3d-keyframes.md`
 - [ ] **T3c All-shots video for the teaser — overnight** (merged on `main`: every story shot is real Wan 2.2 video).
       **Start when T3d passes its checklist** — the owner is away from the PC and handed the go/no-go to the lead (2026-10-20); you check the list yourself, no need to wait for him. `git pull`, restart the
       Studio and ComfyUI. Settings → Motion: engine **Wan 2.2**, coverage **All shots**, upscale **on** (4x-UltraSharp),
