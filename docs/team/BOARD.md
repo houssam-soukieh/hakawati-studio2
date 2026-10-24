@@ -73,6 +73,15 @@ Two Claude sessions work on this repo for the owner (Dr. Houssam Soukieh):
          ≤ ×1.6; 5 s = two runs of 61; 8 s = two runs of 73 stretched ×1.32. **Never single 8-s runs.** Before T3c, answer
          the open question about the bad 8-s fox clip: compare the RAW 832×480 Wan frames with the upscaled ones (same
          frame numbers) — blue cast already in the raw → Wan at 193 frames; raw clean → a bug in the chunked upscale.
+      **Steps 1–2 done (2026-10-24).** `git pull`/restart done, `video.seconds: 3` confirmed live, the raw-vs-upscale
+      question answered (blue cast already in Wan's raw output — not an upscale bug, see the report). But **Gemini's
+      quota (behind FreeLLMAPI) was persistently exhausted for most of this run** — only `s2-3` got a real
+      engine-authored prompt + critic review (now 7/10, passes); the other 13 shots stayed on offline-template
+      prompts, unreviewed. Contact sheet made (`docs/team/reports/assets/t3e-contact-sheet.png`) — pictures look
+      reasonable on a plain look despite the missing reviews. **Step 3 still open: waiting on the owner's OK on the
+      keyframes** (worth deciding whether to re-run step 2's critic pass once quota clears, for real scores on the
+      13 unreviewed shots, before that OK). **Do not start T3c.** Full detail:
+      → `docs/team/reports/2026-10-20-t3d-keyframes.md` (T3e section)
 - [ ] **T3c All-shots video for the teaser — overnight** (merged on `main`: every story shot is real Wan 2.2 video).
       **Start after T3e, on the owner's OK of the keyframes.** `git pull`, restart the
       Studio and ComfyUI. Settings → Motion: engine **Wan 2.2**, coverage **All shots**, upscale **on** (4x-UltraSharp),

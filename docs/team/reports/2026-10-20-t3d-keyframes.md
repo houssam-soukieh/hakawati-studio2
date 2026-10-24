@@ -119,3 +119,83 @@ negative), or accept `s2-4` as a known limitation and move on — **owner's call
   checklist allows 2 tries per shot) to see if a sharper note fixes the humanization; (b) wait for CodeCraft to be
   reactivated and re-run art on it instead; (c) accept the current pictures and proceed to T3c anyway if time
   matters more than a perfect score — your call, not the lead's or mine to make silently.
+
+---
+
+# T3e — Close T3d: s2-4 once more, then the video (2026-10-24)
+
+`git pull` (T5 merged, lead's `lib/video.mjs` fixes included), `E:\hakawati-engines` worktree no longer in use —
+ran everything from `E:\hakawati` on main. Studio restarted fresh on the pulled code.
+
+## Step 1 — `s2-4 --force` (one try)
+`s2-4` painted with the new negative (`flesh, skin pores, fingernails, knuckles`, added for any frame with only
+beings in it) — but the critic never got to judge it: both text engines failed outright for this call (FreeLLMAPI
+was down — the desktop app had stopped running, relaunched mid-step; CodeCraft still suspended, 403). Left
+`s2-4` unreviewed, exactly the designed fallback ("the next art run judges it again without repainting") — not a
+second "try" by the checklist's own definition, since no real attempt at judging it had happened yet.
+
+## Step 2 — plain `art` (repaint s1-1/s1-2, re-judge s1-5/s2-4, and anything else stale)
+Relaunched FreeLLMAPI and reset the engine health (POST `/api/settings`) before this step — but **Gemini's quota
+(behind FreeLLMAPI) turned out persistently exhausted** from the heavy testing earlier in the day (today's T5
+live-testing, Image Studio builds — see those reports). Not a brief dip: the "soonest reset" estimate kept
+resetting back up to ~5m each time it got close to zero, for the better part of an hour, before finally clearing
+enough for occasional calls through.
+
+**Net result: only `s2-3` actually got a real engine-authored prompt and a critic review this run** (the one call
+that landed in a brief working window) — it now **passes at 7/10** ("captures the eerie translucent humanoid and
+the bedroom atmosphere effectively... head features remain slightly too defined"), confirming the earlier
+IP-Adapter-weight fix holds. **Every other shot — `s1-1` through `s1-6`, `s2-1`, `s2-2`, `s2-4`, `s3-1`, `s4-1`,
+`s5-1`, `s5-2` (13 of 14) — stayed on its offline-template prompt and ended up unreviewed** (`picture critic
+unavailable — not reviewed`), because every one of their calls landed inside the exhausted window. The run
+completed cleanly otherwise — no hang, no crash, no lost edits — the reliability code did exactly what it's
+for; it just had nothing but a dead key to fall back on for most of an hour.
+
+| shot | score | reviewed | prompt source |
+|---|---|---|---|
+| s1-1 | — | no | template |
+| s1-2 | — | no | template |
+| s1-3 | — | no | template |
+| s1-4 | — | no | template |
+| s1-5 | — | no | template |
+| s1-6 | — | no | template |
+| s2-1 | — | no | template |
+| s2-2 | — | no | template |
+| **s2-3** | **7/10** | **yes** | **engine** |
+| s2-4 | — | no | template |
+| s3-1 | — | no | template |
+| s4-1 | — | no | template |
+| s5-1 | — | no | template |
+| s5-2 | — | no | template |
+
+**13/14 shots have no real critic verdict from this run.** This is an infrastructure outcome (spent quota), not a
+content judgment — it says nothing about whether those 13 pictures are good or bad, only that nothing checked.
+
+## Step 3 — contact sheet (owner's review, not yet given)
+→ `docs/team/reports/assets/t3e-contact-sheet.png` (4×4 grid, all 14 final keyframes, labelled).
+
+A plain look at it (not a critic score) suggests the pictures themselves are in reasonable shape regardless of the
+quota outage: Kira reads as the same woman across every one of her shots (`s1-1…s1-6`, `s3-1`, `s5-2`); the Eye is
+a ring of light in both `s2-1` and `s4-1`; Orion and the Broker read as non-human/translucent-glowing throughout
+(`s2-2`, `s2-3`, `s2-4`, `s5-1`). That's an eyeball check, not a substitute for the owner's own look — **waiting
+for his OK before anything else.** Do **not** start T3c.
+
+## Step 4 — the two open items
+- **Video runs are 3 s now**: confirmed live — `Settings → Motion` on the restarted main Studio reports
+  `video.seconds: 3`, matching the lead's `lib/video.mjs` default change (121→73 frames). Not touched further here,
+  as instructed.
+- **The bad 8-s fox clip, raw vs. upscaled**: already answered (same day, separate session) — raw 832×480 Wan
+  frames (`E:\ComfyUI\ComfyUI\output\image-studio\i2v-1792792034024_*`) carry the identical blue cast and dark
+  tree-artifact as the upscaled 1664×960 result, confirmed at frame 1 and frame 96 side by side. **The defect was
+  already in Wan's own output at 193 frames (outside its ~121-frame documented range) — not a bug in the chunked
+  upscale pipeline.** This is also what led to today's `lib/video.mjs` policy change (one run ≤ 73 frames).
+
+## One more thing, in passing
+Image Studio's new Batch feature (a separate tool, `E:\image-studio`, not part of Hakawati) was generating in
+parallel with this run and includes a "pause if another client has ComfyUI work queued" check specifically so it
+never competes with Hakawati for the GPU. Watched it live during T3e: it flipped `running → paused-foreign` the
+instant T3e submitted a paint job, and back to `running` once T3e's queue cleared — confirmed correct under real
+conditions, not just by reading the code.
+
+**Recommendation:** send the owner the contact sheet now (he can judge the pictures himself regardless of critic
+status), and separately decide whether to re-run step 2's critic pass once Gemini's quota is confirmed clear (likely
+tomorrow, if it's a daily cap) to get real scores on the 13 unreviewed shots before committing to T3c.
